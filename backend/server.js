@@ -9,6 +9,8 @@ import attendanceRoutes from "./routes/attendanceRoutes.js";
 import materialRoutes from "./routes/materialRoutes.js"
 
 import libraryRoutes from "./routes/libraryRoutes.js";
+import batchRoutes from "./routes/batchroutes.js";
+import classRoutes from "./routes/classroutes.js";
 
 dotenv.config();
 
@@ -22,6 +24,9 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/placements", placementRoutes);
 app.use("/api/library", libraryRoutes);
+app.use("/api/batches", batchRoutes);
+app.use("/api/classes", classRoutes);
+
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/materials", materialRoutes);
 

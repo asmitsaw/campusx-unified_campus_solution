@@ -55,6 +55,12 @@ const ALL_NAV_ITEMS = [
         roles: ["faculty", "admin"],
     },
     {
+        name: "Classes",
+        href: "/faculty/classes",
+        icon: BookOpen,
+        roles: ["faculty", "admin"],
+    },
+    {
         name: "Manage Events",
         href: "/faculty/events",
         icon: Verified,
