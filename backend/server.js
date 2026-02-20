@@ -5,9 +5,12 @@ import authRoutes from "./routes/authroutes.js";
 import dashboardRoutes from "./routes/dashboardroutes.js";
 import eventRoutes from "./routes/eventroutes.js";
 import placementRoutes from "./routes/placementroutes.js";
-
+import attendanceRoutes from "./routes/attendanceRoutes.js";
+import materialRoutes from "./routes/materialRoutes.js"
 
 import libraryRoutes from "./routes/libraryRoutes.js";
+import batchRoutes from "./routes/batchroutes.js";
+import classRoutes from "./routes/classroutes.js";
 
 dotenv.config();
 
@@ -21,21 +24,14 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/placements", placementRoutes);
 app.use("/api/library", libraryRoutes);
+app.use("/api/batches", batchRoutes);
+app.use("/api/classes", classRoutes);
 
+app.use("/api/attendance", attendanceRoutes);
+app.use("/api/materials", materialRoutes);
 
 app.get("/", (req, res) => {
-  res.json({ message: "🚀 API Running with Supabase" });
-});
-
-// 404 — always return JSON, never HTML
-app.use((req, res) => {
-  res.status(404).json({ success: false, message: `Route not found: ${req.method} ${req.originalUrl}` });
-});
-
-// Global error handler — always return JSON, never HTML
-app.use((err, req, res, next) => {
-  console.error("❌ Unhandled error:", err);
-  res.status(500).json({ success: false, message: err.message || "Internal Server Error" });
+  res.send("🚀 API Running with Supabase");
 });
 
 const PORT = process.env.PORT || 5000;
