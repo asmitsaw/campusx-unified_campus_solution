@@ -5,6 +5,7 @@ import { apiGet } from "../../utils/api";
 import {
     Users, BookOpen, Calendar, ClipboardList, TrendingUp,
     Clock, CheckCircle, AlertTriangle, Building2, Loader2, ChevronLeft, ChevronRight,
+    Upload, FileText, Trash2, Download,
 } from "lucide-react";
 import WardenDashboard from "./WardenDashboard";
 
@@ -325,6 +326,76 @@ export default function FacultyDashboard() {
 
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
 
+    // ── Notes state ──────────────────────────────────────────────────────────
+    const [notes, setNotes] = useState([]);
+    const [notesLoading, setNotesLoading] = useState(false);
+    const [uploadingNote, setUploadingNote] = useState(false);
+    const [noteForm, setNoteForm] = useState({ subject: "", description: "" });
+    const [noteFile, setNoteFile] = useState(null);
+    const [showUploadForm, setShowUploadForm] = useState(false);
+    const [dragOver, setDragOver] = useState(false);
+
+    const fetchNotes = async () => {
+        setNotesLoading(true);
+        try {
+            const res = await apiGet("/notes");
+            setNotes(res.data || []);
+        } catch (e) { console.error("[Notes]", e.message); }
+        setNotesLoading(false);
+    };
+
+    useEffect(() => {
+        if (role === "faculty") fetchNotes();
+    }, [role]);
+
+    const handleUploadNote = async () => {
+        if (!noteFile) return alert("Please select a PDF file");
+        if (!noteForm.subject.trim()) return alert("Please enter a subject name");
+        setUploadingNote(true);
+        try {
+            const formData = new FormData();
+            formData.append("file", noteFile);
+            formData.append("subject", noteForm.subject);
+            formData.append("description", noteForm.description);
+
+            const token = localStorage.getItem("campusx_token");
+            const res = await fetch("/api/notes/upload", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+                body: formData,
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || "Upload failed");
+
+            setNoteForm({ subject: "", description: "" });
+            setNoteFile(null);
+            setShowUploadForm(false);
+            fetchNotes();
+        } catch (e) {
+            alert("Upload failed: " + e.message);
+        }
+        setUploadingNote(false);
+    };
+
+    const handleDeleteNote = async (id) => {
+        if (!confirm("Delete this note?")) return;
+        try {
+            const token = localStorage.getItem("campusx_token");
+            const res = await fetch(`/api/notes/${id}`, {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) throw new Error("Delete failed");
+            fetchNotes();
+        } catch (e) { alert(e.message); }
+    };
+
+    const formatFileSize = (bytes) => {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    };
+
     if (role === "hostel_warden") return <WardenDashboard />;
 
     const librarianStats = useLibrarianStats();
@@ -628,6 +699,177 @@ export default function FacultyDashboard() {
                         )}
                     </div>
                 </div>
+
+                {/* ── UPLOAD NOTES (Faculty Only) ── */}
+                {isFaculty && (
+                    <div className="bg-white border-3 border-black shadow-neo">
+                        <div className="flex items-center justify-between px-6 py-4 border-b-3 border-black bg-neo-purple">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-black text-white p-1 border-2 border-white shadow-sm">
+                                    <Upload className="w-5 h-5" />
+                                </div>
+                                <h3 className="text-xl font-black text-white uppercase italic">Upload Notes</h3>
+                            </div>
+                            <button
+                                onClick={() => setShowUploadForm(!showUploadForm)}
+                                className="text-sm font-black border-2 border-black bg-white px-4 py-2 shadow-neo-sm hover:bg-neo-yellow transition-colors active:shadow-none active:translate-y-[2px]"
+                            >
+                                {showUploadForm ? "✕ CLOSE" : "+ NEW UPLOAD"}
+                            </button>
+                        </div>
+
+                        {/* Upload Form */}
+                        {showUploadForm && (
+                            <div className="p-6 border-b-3 border-black bg-neo-bg">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label className="block text-xs font-black uppercase mb-2">Subject *</label>
+                                        <input
+                                            type="text"
+                                            value={noteForm.subject}
+                                            onChange={e => setNoteForm({ ...noteForm, subject: e.target.value })}
+                                            placeholder="e.g., Data Structures, DBMS"
+                                            className="w-full h-12 border-2 border-black px-4 font-bold placeholder-gray-400 focus:bg-neo-yellow focus:ring-0 transition-colors outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-black uppercase mb-2">Description (optional)</label>
+                                        <input
+                                            type="text"
+                                            value={noteForm.description}
+                                            onChange={e => setNoteForm({ ...noteForm, description: e.target.value })}
+                                            placeholder="e.g., Unit 3 - Trees & Graphs"
+                                            className="w-full h-12 border-2 border-black px-4 font-bold placeholder-gray-400 focus:bg-neo-yellow focus:ring-0 transition-colors outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Drag & Drop Area */}
+                                <div
+                                    onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                                    onDragLeave={() => setDragOver(false)}
+                                    onDrop={e => {
+                                        e.preventDefault();
+                                        setDragOver(false);
+                                        const file = e.dataTransfer.files[0];
+                                        if (file && file.type === "application/pdf") {
+                                            setNoteFile(file);
+                                        } else {
+                                            alert("Only PDF files are allowed");
+                                        }
+                                    }}
+                                    className={`border-3 border-dashed border-black p-8 text-center transition-all cursor-pointer mb-4
+                                        ${dragOver ? "bg-neo-green border-solid scale-[1.02]" : noteFile ? "bg-neo-green/20" : "bg-white hover:bg-neo-yellow/30"}`}
+                                    onClick={() => document.getElementById("noteFileInput").click()}
+                                >
+                                    <input
+                                        id="noteFileInput"
+                                        type="file"
+                                        accept=".pdf"
+                                        className="hidden"
+                                        onChange={e => {
+                                            if (e.target.files[0]) setNoteFile(e.target.files[0]);
+                                        }}
+                                    />
+                                    {noteFile ? (
+                                        <div className="flex items-center justify-center gap-3">
+                                            <FileText className="w-8 h-8 text-neo-purple" />
+                                            <div className="text-left">
+                                                <p className="font-black text-lg">{noteFile.name}</p>
+                                                <p className="text-xs font-bold text-gray-500">{formatFileSize(noteFile.size)}</p>
+                                            </div>
+                                            <button
+                                                onClick={e => { e.stopPropagation(); setNoteFile(null); }}
+                                                className="ml-4 bg-neo-red text-white border-2 border-black px-3 py-1 text-xs font-black hover:bg-red-600 transition-colors"
+                                            >
+                                                REMOVE
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <Upload className="w-10 h-10 mx-auto mb-2 text-gray-400" />
+                                            <p className="font-black uppercase text-sm">Drag & Drop PDF here</p>
+                                            <p className="text-xs font-bold text-gray-400 mt-1">or click to browse (max 25 MB)</p>
+                                        </>
+                                    )}
+                                </div>
+
+                                <button
+                                    onClick={handleUploadNote}
+                                    disabled={uploadingNote || !noteFile}
+                                    className={`w-full border-2 border-black py-3 font-black uppercase text-sm shadow-neo-sm
+                                        active:shadow-none active:translate-y-[2px] transition-all
+                                        ${uploadingNote || !noteFile
+                                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                            : "bg-black text-white hover:bg-neo-purple"}`}
+                                >
+                                    {uploadingNote ? (
+                                        <span className="flex items-center justify-center gap-2">
+                                            <Loader2 className="w-4 h-4 animate-spin" /> Uploading…
+                                        </span>
+                                    ) : "Upload Note"}
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Notes List */}
+                        {notesLoading ? (
+                            <div className="flex items-center justify-center py-12">
+                                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                                <span className="font-bold text-sm text-gray-500">Loading notes…</span>
+                            </div>
+                        ) : notes.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-400">
+                                <FileText className="w-10 h-10 opacity-20" />
+                                <p className="font-black uppercase text-sm">No notes uploaded yet</p>
+                                <p className="text-xs font-bold">Click "+ NEW UPLOAD" to add your first PDF</p>
+                            </div>
+                        ) : (
+                            <div className="divide-y-2 divide-black">
+                                {notes.map((note) => (
+                                    <div key={note.id} className="flex items-center gap-4 px-6 py-4 hover:bg-neo-bg transition-colors group">
+                                        <div className="bg-neo-red/10 border-2 border-black p-2 group-hover:bg-neo-red/20 transition-colors">
+                                            <FileText className="w-6 h-6 text-neo-red" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-black text-lg leading-tight truncate">{note.originalName}</p>
+                                            <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                                                <span className="text-[10px] font-black uppercase border border-black bg-neo-purple text-white px-1.5">
+                                                    {note.subject}
+                                                </span>
+                                                {note.description && (
+                                                    <span className="text-xs font-bold text-slate-500">{note.description}</span>
+                                                )}
+                                                <span className="text-xs font-mono text-slate-400">{formatFileSize(note.size)}</span>
+                                                <span className="text-xs font-bold text-slate-400">
+                                                    {new Date(note.uploadedAt).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <a
+                                                href={`/api/notes/download/${note.filename}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="border-2 border-black bg-white p-2 hover:bg-neo-blue hover:text-white transition-colors shadow-neo-sm active:shadow-none active:translate-y-[2px]"
+                                                title="Download"
+                                            >
+                                                <Download className="w-4 h-4" />
+                                            </a>
+                                            <button
+                                                onClick={() => handleDeleteNote(note.id)}
+                                                className="border-2 border-black bg-white p-2 hover:bg-neo-red hover:text-white transition-colors shadow-neo-sm active:shadow-none active:translate-y-[2px]"
+                                                title="Delete"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );

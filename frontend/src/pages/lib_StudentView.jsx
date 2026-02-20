@@ -1,7 +1,125 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const API = "http://localhost:5000/api/library";
+
+/**
+ * FineCalculator Component
+ * Estimates fines based on days overdue.
+ */
+function FineCalculator({ fineRate, issuedBooks }) {
+  const [selectedBook, setSelectedBook] = useState(issuedBooks[0]?.title || "");
+  const [days, setDays] = useState(3);
+  
+  const estimatedFine = days * fineRate;
+
+  return (
+    <div className="bg-white border-3 border-black p-0 shadow-neo">
+        <div className="bg-neo-yellow border-b-3 border-black p-4 flex items-center gap-2">
+            <span className="material-symbols-outlined font-bold">calculate</span>
+            <h3 className="font-black text-lg uppercase">Fine Calculator</h3>
+        </div>
+        <div className="p-5 space-y-5">
+            <div>
+                <label className="block text-xs font-black uppercase mb-2">Select Book</label>
+                <select 
+                    value={selectedBook}
+                    onChange={(e) => setSelectedBook(e.target.value)}
+                    className="w-full border-2 border-black bg-neo-bg py-3 px-4 text-sm font-bold focus:ring-0 focus:border-neo-purple shadow-neo-sm outline-none"
+                >
+                    {issuedBooks.length > 0 ? (
+                        issuedBooks.map(b => (
+                            <option key={b.id} value={b.title}>{b.title}</option>
+                        ))
+                    ) : (
+                        <option>No issued books</option>
+                    )}
+                </select>
+            </div>
+            <div>
+                <label className="block text-xs font-black uppercase mb-2">Days Overdue</label>
+                <div className="flex items-center gap-4 bg-neo-bg border-2 border-black p-2 shadow-neo-sm">
+                    <input 
+                        className="w-full h-3 bg-white rounded-none appearance-none cursor-pointer border-2 border-black accent-neo-purple" 
+                        max="30" min="0" type="range" 
+                        value={days}
+                        onChange={(e) => setDays(parseInt(e.target.value))}
+                    />
+                    <div className="bg-neo-purple text-white font-black border-2 border-black w-10 h-8 flex items-center justify-center">{days}</div>
+                </div>
+            </div>
+            <div className="pt-4 border-t-2 border-dashed border-black flex items-center justify-between">
+                <span className="text-sm font-bold">Estimated Fine:</span>
+                <span className="text-3xl font-black bg-neo-red text-white px-2 border-2 border-black transform -rotate-2">₹{estimatedFine.toFixed(2)}</span>
+            </div>
+            <button className="w-full border-2 border-black bg-black text-white py-3 text-sm font-black uppercase hover:bg-neo-purple hover:text-white transition-colors shadow-neo-sm">
+                Check Policy
+            </button>
+        </div>
+    </div>
+  );
+}
+
+/**
+ * LibrarianChat Component
+ * Real-time chat interface for students to communicate with the librarian.
+ */
+function LibrarianChat({ isOpen, onClose, messages, onSendMessage, message, setMessage, isSending, user }) {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed bottom-6 right-6 z-[100] w-96 max-h-[600px] flex flex-col bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] animate-slide-up">
+            <div className="bg-neo-purple p-4 border-b-4 border-black flex items-center justify-between">
+                <div className="flex items-center gap-2 text-white">
+                    <span className="material-symbols-outlined font-black">support_agent</span>
+                    <h3 className="font-black uppercase italic">Department Librarian</h3>
+                </div>
+                <button onClick={onClose} className="text-white hover:rotate-90 transition-transform">
+                    <span className="material-symbols-outlined font-black">close</span>
+                </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-neo-bg min-h-[300px]">
+                {messages.length === 0 ? (
+                    <div className="text-center py-10 opacity-40">
+                        <span className="material-symbols-outlined text-4xl block mb-2">chat</span>
+                        <p className="text-xs font-black uppercase">Start a conversation with the librarian</p>
+                    </div>
+                ) : (
+                    messages.map((m, i) => (
+                        <div key={i} className={`flex flex-col ${m.sender_role === 'student' ? 'items-end' : 'items-start'}`}>
+                            <div className={`max-w-[85%] px-3 py-2 border-2 border-black text-sm font-bold shadow-neo-sm
+                                ${m.sender_role === 'student' ? 'bg-neo-blue text-white' : 'bg-white text-black'}`}>
+                                {m.message}
+                            </div>
+                            <span className="text-[9px] font-black uppercase mt-1 opacity-50 px-1">
+                                {m.sender_role === 'student' ? 'You' : 'Librarian'} • {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                        </div>
+                    ))
+                )}
+            </div>
+            <form onSubmit={onSendMessage} className="p-4 bg-white border-t-4 border-black flex gap-2">
+                <input 
+                    type="text" 
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Type a message..."
+                    className="flex-1 border-2 border-black p-2 text-sm font-bold outline-none focus:bg-neo-yellow transition-colors"
+                />
+                <button 
+                    type="submit"
+                    disabled={isSending}
+                    className="bg-black text-white p-2 border-2 border-black hover:bg-neo-purple transition-colors disabled:opacity-50"
+                >
+                    <span className="material-symbols-outlined font-black">send</span>
+                </button>
+            </form>
+        </div>
+    );
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
 export default function Library() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -12,28 +130,59 @@ export default function Library() {
   const [toast, setToast]             = useState(null);
   const navigate = useNavigate();
 
+  // Fine Logic
+  const FINE_RATE = 10; // ₹10 per day
+  const [totalFine, setTotalFine] = useState(0);
+  const [overdueBook, setOverdueBook] = useState(null);
+
+  // Chat Logic
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessage, setChatMessage] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [isSending, setIsSending] = useState(false);
+
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   };
 
-  const fetchIssuedBooks = async () => {
+  const fetchIssuedBooks = useCallback(async () => {
     try {
         if (!user) return;
-        const response = await fetch(`http://localhost:5000/api/library/my-books?user_id=${user.id}`);
+        const response = await fetch(`${API}/my-books?user_id=${user.id}`);
         if (response.ok) {
             const data = await response.json();
             setIssuedBooks(data || []);
+            
+            // Calculate Total Fine
+            let fineAccumulator = 0;
+            let worstBook = null;
+            const now = new Date();
+            
+            data.forEach(book => {
+                const dueDate = new Date(book.due_date);
+                if (now > dueDate) {
+                    const diffTime = Math.abs(now - dueDate);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    const fine = diffDays * FINE_RATE;
+                    fineAccumulator += fine;
+                    if (!worstBook || diffDays > worstBook.days) {
+                        worstBook = { ...book, days: diffDays, fine };
+                    }
+                }
+            });
+            setTotalFine(fineAccumulator);
+            setOverdueBook(worstBook);
         }
     } catch (error) {
         console.error("Error fetching issued books:", error);
     }
-  };
+  }, [user, FINE_RATE]);
 
-  const fetchMyRequests = async () => {
+  const fetchMyRequests = useCallback(async () => {
     try {
         if (!user) return;
-        const response = await fetch(`http://localhost:5000/api/library/my-requests?user_id=${user.id}`);
+        const response = await fetch(`${API}/my-requests?user_id=${user.id}`);
         if (response.ok) {
             const data = await response.json();
             setMyRequests(data || []);
@@ -41,20 +190,41 @@ export default function Library() {
     } catch (error) {
         console.error("Error fetching requests:", error);
     }
-  };
+  }, [user]);
+
+  const fetchMessages = useCallback(async () => {
+    if (!user || !isChatOpen) return;
+    try {
+        const r = await fetch(`${API}/messages?student_id=${user.id}`);
+        const d = await r.json();
+        setMessages(Array.isArray(d) ? d : []);
+    } catch (e) {
+        console.error("Failed to fetch messages", e);
+    }
+  }, [user, isChatOpen]);
 
   useEffect(() => {
     if (user) {
       fetchIssuedBooks();
       fetchMyRequests();
     }
-  }, [user]);
+  }, [user, fetchIssuedBooks, fetchMyRequests]);
+
+  // Poll for messages when chat is open
+  useEffect(() => {
+    let interval;
+    if (isChatOpen) {
+        fetchMessages();
+        interval = setInterval(fetchMessages, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [isChatOpen, fetchMessages]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     setLoading(true);
     try {
-        const response = await fetch(`http://localhost:5000/api/library/search?query=${encodeURIComponent(searchQuery)}`);
+        const response = await fetch(`${API}/search?query=${encodeURIComponent(searchQuery)}`);
         const data = await response.json();
         if (response.ok) {
             setSearchResults(data || []);
@@ -75,7 +245,7 @@ export default function Library() {
         return;
     }
     try {
-        const response = await fetch('http://localhost:5000/api/library/request', {
+        const response = await fetch(`${API}/request`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -104,6 +274,31 @@ export default function Library() {
     }
   };
 
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!chatMessage.trim() || isSending) return;
+    setIsSending(true);
+    try {
+        const res = await fetch(`${API}/messages`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                sender_id: user.id,
+                message: chatMessage,
+                sender_role: "student"
+            }),
+        });
+        if (res.ok) {
+            setChatMessage("");
+            fetchMessages();
+        }
+    } catch (e) {
+        showToast("Failed to send message", "error");
+    } finally {
+        setIsSending(false);
+    }
+  };
+
   return (
     <div className="font-display bg-neo-bg text-neo-black min-h-screen overflow-x-hidden p-6 -m-6">
       {/* Toast */}
@@ -115,12 +310,6 @@ export default function Library() {
       )}
       <div className="flex flex-col gap-8 mx-auto max-w-[1600px]">
         
-        {/* Header Section (Replicated from HTML) */}
-        <header className="flex h-20 items-center justify-between border-b-3 border-black bg-white px-6 sticky top-0 z-30 shadow-sm hidden">
-             {/* This header is usually handled by the main layout, but for exact replication internally: */}
-             {/* We will implement the content within the main page area as requested */}
-        </header>
-        
         <div className="flex items-center justify-between mb-4">
             <h1 className="text-4xl font-black uppercase italic tracking-tighter" style={{ textShadow: "2px 2px 0px #A259FF" }}>
                 Library Resource Manager
@@ -128,23 +317,27 @@ export default function Library() {
         </div>
 
         {/* Action Required Section */}
-        <div className="grid gap-6 md:grid-cols-12">
-            <div className="col-span-12 bg-neo-red border-3 border-black p-0 flex flex-col sm:flex-row shadow-neo">
-                <div className="flex-1 p-5 flex gap-4 items-center">
-                    <div className="flex size-14 shrink-0 items-center justify-center bg-black text-white border-2 border-white">
-                        <span className="material-symbols-outlined text-3xl font-bold">warning</span>
+        {overdueBook && (
+            <div className="grid gap-6 md:grid-cols-12 animate-bounce-in">
+                <div className="col-span-12 bg-neo-red border-3 border-black p-0 flex flex-col sm:flex-row shadow-neo">
+                    <div className="flex-1 p-5 flex gap-4 items-center">
+                        <div className="flex size-14 shrink-0 items-center justify-center bg-black text-white border-2 border-white">
+                            <span className="material-symbols-outlined text-3xl font-bold">warning</span>
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-black text-white uppercase mb-1" style={{ textShadow: "2px 2px 0px #000" }}>Action Required</h3>
+                            <p className="text-sm font-bold text-black bg-white inline-block px-2 py-1 border-2 border-black">
+                                '{overdueBook.title}' is {overdueBook.days} days overdue. Current Fine: ₹{overdueBook.fine.toFixed(2)}
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="text-xl font-black text-white uppercase mb-1" style={{ textShadow: "2px 2px 0px #000" }}>Action Required</h3>
-                        <p className="text-sm font-bold text-black bg-white inline-block px-2 py-1 border-2 border-black">'Introduction to Algorithms' is 3 days overdue. Fine: ₹0.00</p>
-                    </div>
+                    <button className="sm:border-l-3 border-t-3 sm:border-t-0 border-black bg-white hover:bg-gray-100 px-8 py-4 font-black text-lg uppercase transition-colors flex items-center justify-center gap-2 group">
+                        Clear Dues
+                        <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                    </button>
                 </div>
-                <button className="sm:border-l-3 border-t-3 sm:border-t-0 border-black bg-white hover:bg-gray-100 px-8 py-4 font-black text-lg uppercase transition-colors flex items-center justify-center gap-2 group">
-                    Pay Now
-                    <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                </button>
             </div>
-        </div>
+        )}
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
             <div className="xl:col-span-2 flex flex-col gap-8">
@@ -169,7 +362,7 @@ export default function Library() {
                             <button 
                                 onClick={handleSearch}
                                 disabled={loading}
-                                className="h-14 px-8 border-2 border-black bg-neo-purple text-white font-black hover:bg-purple-600 transition-colors shadow-neo-sm active:translate-x-[2px] active:translate-y-[2px] active:translate-x-[2px] active:shadow-none flex items-center gap-2"
+                                className="h-14 px-8 border-2 border-black bg-neo-purple text-white font-black hover:bg-purple-600 transition-colors shadow-neo-sm active:translate-x-[2px] active:translate-y-[2px] active:shadow-none flex items-center gap-2"
                             >
                                 {loading ? <span className="animate-spin material-symbols-outlined">progress_activity</span> : <span>SEARCH</span>}
                             </button>
@@ -301,7 +494,7 @@ export default function Library() {
                                                         <div>
                                                             <p className="font-black text-lg">{book.title}</p>
                                                             <p className="text-sm font-bold">{book.author}</p>
-                                                            <p className="text-xs mt-1 font-mono bg-white inline-block border border-black px-1">ID: {book.book_id}</p>
+                                                            <p className="text-xs mt-1 font-mono bg-white inline-block border border-black px-1">ID: {book.book_id || book.id}</p>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -349,69 +542,43 @@ export default function Library() {
                             <span className="material-symbols-outlined text-2xl text-white">book</span>
                         </div>
                         <p className="text-xs font-bold text-white/90 uppercase mb-1">Total Issued</p>
-                        <p className="text-4xl font-black text-white" style={{ textShadow: "2px 2px 0px #000" }}>3</p>
+                        <p className="text-4xl font-black text-white" style={{ textShadow: "2px 2px 0px #000" }}>{issuedBooks.length}</p>
                     </div>
                     <div className="col-span-1 bg-neo-green border-3 border-black p-4 shadow-neo hover:-translate-y-1 transition-transform">
                         <div className="flex justify-between items-start mb-2">
                             <span className="material-symbols-outlined text-2xl text-black">bookmark_add</span>
                         </div>
                         <p className="text-xs font-bold text-black/80 uppercase mb-1">Requested</p>
-                        <p className="text-4xl font-black text-black">1</p>
+                        <p className="text-4xl font-black text-black">{myRequests.length}</p>
                     </div>
                     <div className="col-span-2 bg-neo-red border-3 border-black p-4 shadow-neo flex items-center justify-between hover:-translate-y-1 transition-transform">
                         <div>
                             <p className="text-xs font-bold text-white uppercase mb-1">Total Fines Due</p>
-                            <p className="text-4xl font-black text-white" style={{ textShadow: "3px 3px 0px #000" }}>$1.50</p>
+                            <p className="text-4xl font-black text-white" style={{ textShadow: "3px 3px 0px #000" }}>₹{totalFine.toFixed(2)}</p>
                         </div>
                         <div className="flex size-14 items-center justify-center bg-white border-3 border-black shadow-neo-sm transform rotate-6">
-                            <span className="material-symbols-outlined text-3xl text-black">attach_money</span>
+                            <span className="material-symbols-outlined text-3xl text-black">currency_rupee</span>
                         </div>
                     </div>
                 </div>
 
                 {/* Fine Calculator */}
-                <div className="bg-white border-3 border-black p-0 shadow-neo">
-                    <div className="bg-neo-yellow border-b-3 border-black p-4 flex items-center gap-2">
-                        <span className="material-symbols-outlined font-bold">calculate</span>
-                        <h3 className="font-black text-lg uppercase">Fine Calculator</h3>
-                    </div>
-                    <div className="p-5 space-y-5">
-                        <div>
-                            <label className="block text-xs font-black uppercase mb-2">Select Book</label>
-                            <select className="w-full border-2 border-black bg-neo-bg py-3 px-4 text-sm font-bold focus:ring-0 focus:border-neo-purple shadow-neo-sm outline-none">
-                                <option>Clean Code (Due Tomorrow)</option>
-                                <option>Design Patterns</option>
-                                <option>Intro to Algorithms</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-black uppercase mb-2">Days Overdue</label>
-                            <div className="flex items-center gap-4 bg-neo-bg border-2 border-black p-2 shadow-neo-sm">
-                                <input className="w-full h-3 bg-white rounded-none appearance-none cursor-pointer border-2 border-black accent-neo-purple" max="30" min="0" type="range" defaultValue="3"/>
-                                <div className="bg-neo-purple text-white font-black border-2 border-black w-10 h-8 flex items-center justify-center">3</div>
-                            </div>
-                        </div>
-                        <div className="pt-4 border-t-2 border-dashed border-black flex items-center justify-between">
-                            <span className="text-sm font-bold">Estimated Fine:</span>
-                            <span className="text-3xl font-black bg-neo-red text-white px-2 border-2 border-black transform -rotate-2">$1.50</span>
-                        </div>
-                        <button className="w-full border-2 border-black bg-black text-white py-3 text-sm font-black uppercase hover:bg-neo-purple hover:text-white transition-colors shadow-neo-sm active:shadow-none active:translate-y-1">
-                            Check Policy
-                        </button>
-                    </div>
-                </div>
+                <FineCalculator fineRate={FINE_RATE} issuedBooks={issuedBooks} />
 
                 {/* Quick Actions */}
                 <div className="bg-white border-3 border-black p-5 shadow-neo relative overflow-hidden">
                     <div className="absolute -right-6 -top-6 w-20 h-20 bg-neo-blue rounded-full border-2 border-black"></div>
                     <h3 className="font-black text-lg uppercase mb-4 relative z-10">Quick Actions</h3>
                     <div className="space-y-3 relative z-10">
-                        <button className="w-full flex items-center justify-between border-2 border-black bg-white p-3 hover:bg-neo-yellow hover:-translate-y-1 hover:shadow-neo-sm transition-all group">
+                        <button 
+                            onClick={() => setIsChatOpen(true)}
+                            className="w-full flex items-center justify-between border-2 border-black bg-white p-3 hover:bg-neo-green hover:-translate-y-1 hover:shadow-neo-sm transition-all group"
+                        >
                             <div className="flex items-center gap-3">
-                                <div className="size-10 border-2 border-black bg-neo-purple flex items-center justify-center text-white">
-                                    <span className="material-symbols-outlined text-sm">calendar_add_on</span>
+                                <div className="size-10 border-2 border-black bg-neo-green flex items-center justify-center text-black">
+                                    <span className="material-symbols-outlined text-sm">support_agent</span>
                                 </div>
-                                <span className="text-sm font-bold">Book a Room</span>
+                                <span className="text-sm font-bold">Librarian Chat</span>
                             </div>
                             <span className="material-symbols-outlined font-bold group-hover:translate-x-1 transition-transform">arrow_forward</span>
                         </button>
@@ -437,20 +604,22 @@ export default function Library() {
                             </div>
                             <span className="material-symbols-outlined font-bold group-hover:translate-x-1 transition-transform">arrow_forward</span>
                         </button>
-                        <button className="w-full flex items-center justify-between border-2 border-black bg-white p-3 hover:bg-neo-green hover:-translate-y-1 hover:shadow-neo-sm transition-all group">
-                            <div className="flex items-center gap-3">
-                                <div className="size-10 border-2 border-black bg-neo-green flex items-center justify-center text-black">
-                                    <span className="material-symbols-outlined text-sm">help</span>
-                                </div>
-                                <span className="text-sm font-bold">Librarian Chat</span>
-                            </div>
-                            <span className="material-symbols-outlined font-bold group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                        </button>
                     </div>
                 </div>
             </div>
         </div>
       </div>
+
+      <LibrarianChat 
+        isOpen={isChatOpen} 
+        onClose={() => setIsChatOpen(false)}
+        messages={messages}
+        onSendMessage={handleSendMessage}
+        message={chatMessage}
+        setMessage={setChatMessage}
+        isSending={isSending}
+        user={user}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Search,
   Filter,
@@ -8,43 +8,54 @@ import {
   Calendar,
   Upload,
   Ticket,
-  ChevronDown
+  ChevronDown,
+  Download,
+  Loader2,
+  Eye
 } from 'lucide-react';
+import { apiGet } from '../utils/api';
 
 const LMS = () => {
-  const courses = [
-    {
-      id: "CS-402",
-      title: "ADVANCED ALGORITHMS",
-      instructor: "Dr. Aris Thorne",
-      color: "bg-neo-strong-blue", // Blue
-      icon: "https://api.dicebear.com/7.x/avataaars/svg?seed=Aris",
-      news: true
-    },
-    {
-      id: "DSGN-310",
-      title: "DESIGN SYSTEMS",
-      instructor: "Prof. Elena Vance",
-      color: "bg-neo-primary", // Red/Pink
-      icon: "https://api.dicebear.com/7.x/avataaars/svg?seed=Elena",
-      news: false
-    },
-    {
-      id: "AI-505",
-      title: "NEURAL NETWORKS",
-      instructor: "Dr. Simon K.",
-      color: "bg-neo-yellow", // Yellow
-      icon: "https://api.dicebear.com/7.x/avataaars/svg?seed=Simon",
-      news: false
-    },
-    {
-      id: "SEC-201",
-      title: "CYBER SECURITY",
-      instructor: "Prof. Maria Lopez",
-      color: "bg-neo-green", // Green
-      icon: "https://api.dicebear.com/7.x/avataaars/svg?seed=Maria",
-      news: false
-    }
+  const [notes, setNotes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    const fetchNotes = async () => {
+      try {
+        const res = await apiGet("/notes");
+        if (res.success) {
+          setNotes(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch notes:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNotes();
+  }, []);
+
+  const formatBytes = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const filteredNotes = notes.filter(note =>
+    note.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    note.originalName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    note.facultyName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const cardColors = [
+    'bg-neo-strong-blue',
+    'bg-neo-primary',
+    'bg-neo-yellow',
+    'bg-neo-green',
+    'bg-neo-purple'
   ];
 
   return (
@@ -63,7 +74,9 @@ const LMS = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
             <input
               type="text"
-              placeholder="SEARCH SUBJECTS..."
+              placeholder="SEARCH SUBJECTS OR TEACHERS..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 pr-4 py-3 border-3 border-black shadow-neo-sm focus:outline-none font-bold w-full md:w-80 placeholder:text-gray-400 text-sm bg-white"
             />
           </div>
@@ -74,51 +87,74 @@ const LMS = () => {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Main Content (Courses) */}
+        {/* Main Content (Notes) */}
         <div className="md:col-span-12 lg:col-span-8 space-y-8">
 
-          {/* Courses Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {courses.map((course) => (
-              <div key={course.id} className={`${course.color} border-3 border-black p-0 shadow-neo hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex flex-col group`}>
-                {/* Card Header */}
-                <div className="p-6 pb-4 flex-grow relative">
-                  <span className="bg-white border-2 border-black px-2 py-1 text-xs font-black uppercase shadow-sm inline-block mb-3">
-                    {course.id}
-                  </span>
-                  <h3 className="text-3xl font-black uppercase leading-tight mb-6 text-white" style={{ textShadow: '2px 2px 0px #000' }}>
-                    {course.title}
-                  </h3>
+          <div className="flex items-center gap-3 mb-4">
+            <h3 className="text-3xl font-black italic uppercase">
+              Available <span className="text-neo-strong-blue">Notes</span>
+            </h3>
+            {loading && <Loader2 className="animate-spin text-neo-strong-blue" />}
+          </div>
 
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full border-2 border-black bg-white overflow-hidden shadow-sm">
-                      <img src={course.icon} alt={course.instructor} className="w-full h-full object-cover" />
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20 border-3 border-black bg-white shadow-neo">
+              <Loader2 className="w-12 h-12 animate-spin mb-4" />
+              <p className="font-black uppercase tracking-widest text-gray-400">Loading Academic Repository...</p>
+            </div>
+          ) : filteredNotes.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {filteredNotes.map((note, index) => (
+                <div key={note.id} className={`${cardColors[index % cardColors.length]} border-3 border-black p-0 shadow-neo hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex flex-col group`}>
+                  {/* Card Header */}
+                  <div className="p-6 pb-4 flex-grow relative">
+                    <span className="bg-white border-2 border-black px-2 py-1 text-xs font-black uppercase shadow-sm inline-block mb-3">
+                      {note.subject}
+                    </span>
+                    <h3 className="text-2xl font-black uppercase leading-tight mb-6 text-white" style={{ textShadow: '2px 2px 0px #000' }}>
+                      {note.originalName.replace(/\.pdf$/i, '')}
+                    </h3>
+
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full border-2 border-black bg-white flex items-center justify-center overflow-hidden shadow-sm">
+                        <img
+                          src={`https://api.dicebear.com/7.x/initials/svg?seed=${note.facultyName}`}
+                          alt={note.facultyName}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div>
+                        <span className="block font-bold italic text-xs text-black/70 uppercase">Instructor</span>
+                        <span className="font-black text-sm text-black bg-white/50 px-2 py-0.5 border-black border-collapse">{note.facultyName}</span>
+                      </div>
                     </div>
-                    <span className="font-bold italic text-sm text-black bg-white/50 px-2 py-0.5 border-black border-collapse">{course.instructor}</span>
+                  </div>
+
+                  {/* Card Actions (Bottom) */}
+                  <div className="bg-white border-t-3 border-black grid grid-cols-2 divide-x-2 divide-black text-xs">
+                    <div className="flex flex-col items-center justify-center py-3">
+                      <span className="font-bold text-gray-500 uppercase">File Size</span>
+                      <span className="font-black">{formatBytes(note.size)}</span>
+                    </div>
+                    <a
+                      href={`/api/notes/download/${note.filename}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 py-3 hover:bg-neo-yellow transition-colors group/btn font-black uppercase"
+                    >
+                      <Eye size={18} className="stroke-[2.5] group-hover/btn:scale-110 transition-transform" />
+                      View Note
+                    </a>
                   </div>
                 </div>
-
-                {/* Card Actions (Bottom) */}
-                <div className="bg-white border-t-3 border-black grid grid-cols-3 divide-x-2 divide-black">
-                  <button className="flex flex-col items-center gap-1 py-4 hover:bg-gray-100 transition-colors group/btn">
-                    <FileText size={20} className="stroke-[2.5] group-hover/btn:scale-110 transition-transform" />
-                    <span className="text-[10px] font-black uppercase mt-1">Notes</span>
-                  </button>
-                  <button className="flex flex-col items-center gap-1 py-4 hover:bg-gray-100 transition-colors group/btn">
-                    <CheckSquare size={20} className="stroke-[2.5] group-hover/btn:scale-110 transition-transform" />
-                    <span className="text-[10px] font-black uppercase mt-1">Tasks</span>
-                  </button>
-                  <button className="flex flex-col items-center gap-1 py-4 hover:bg-gray-100 transition-colors group/btn relative">
-                    {course.news && (
-                      <span className="absolute top-3 right-8 w-3 h-3 bg-neo-primary border-2 border-black rounded-full z-10 animate-pulse"></span>
-                    )}
-                    <Megaphone size={20} className="stroke-[2.5] group-hover/btn:scale-110 transition-transform" />
-                    <span className="text-[10px] font-black uppercase mt-1">News</span>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 border-3 border-black bg-white shadow-neo">
+              <FileText className="w-16 h-16 text-gray-200 mb-4" />
+              <p className="font-black uppercase tracking-widest text-gray-400">No notes found matching your search</p>
+            </div>
+          )}
 
           {/* Dropbox Section */}
           <div className="bg-white border-3 border-black p-8 shadow-neo-lg space-y-6">
@@ -156,7 +192,7 @@ const LMS = () => {
 
             <div className="space-y-4">
               {/* Event 1 */}
-              <div className="bg-neo-bg border-3 border-black p-4 flex gap-4 hover:-translate-y-1 hover:shadow-neo transition-all cursor-pointer group bg-neo-cream">
+              <div className="bg-neo-bg border-3 border-black p-4 flex gap-4 hover:-translate-y-1 hover:shadow-neo transition-all cursor-pointer group bg-neo-cream text-black">
                 <div className="bg-white border-2 border-black p-1 flex flex-col items-center justify-center w-14 h-14 shadow-sm flex-shrink-0 group-hover:bg-neo-pink group-hover:text-white transition-colors">
                   <span className="text-[9px] font-black uppercase">OCT</span>
                   <span className="text-2xl font-black leading-none">24</span>
@@ -172,7 +208,7 @@ const LMS = () => {
               </div>
 
               {/* Event 2 */}
-              <div className="bg-neo-bg border-3 border-black p-4 flex gap-4 hover:-translate-y-1 hover:shadow-neo transition-all cursor-pointer group bg-neo-cream">
+              <div className="bg-neo-bg border-3 border-black p-4 flex gap-4 hover:-translate-y-1 hover:shadow-neo transition-all cursor-pointer group bg-neo-cream text-black">
                 <div className="bg-white border-2 border-black p-1 flex flex-col items-center justify-center w-14 h-14 shadow-sm flex-shrink-0 group-hover:bg-gray-800 group-hover:text-white transition-colors">
                   <span className="text-[9px] font-black uppercase">OCT</span>
                   <span className="text-2xl font-black leading-none">28</span>
@@ -203,7 +239,7 @@ const LMS = () => {
                   <span>Academic Load</span>
                   <span>72%</span>
                 </div>
-                <div className="h-4 bg-white border-3 border-black w-full relative">
+                <div className="h-4 bg-white border-3 border-black w-full relative text-black">
                   <div className="absolute top-0 left-0 h-full bg-neo-bg w-[72%] border-r-3 border-black"></div>
                 </div>
               </div>
@@ -213,7 +249,7 @@ const LMS = () => {
                   <span>Tasks Completed</span>
                   <span>12/15</span>
                 </div>
-                <div className="h-4 bg-white border-3 border-black w-full relative">
+                <div className="h-4 bg-white border-3 border-black w-full relative text-black">
                   <div className="absolute top-0 left-0 h-full bg-neo-yellow w-[80%] border-r-3 border-black"></div>
                 </div>
               </div>
@@ -221,7 +257,7 @@ const LMS = () => {
           </div>
 
           {/* Need Help */}
-          <div className="bg-white border-3 border-black p-6 shadow-neo-lg relative overflow-hidden">
+          <div className="bg-white border-3 border-black p-6 shadow-neo-lg relative overflow-hidden text-black">
             <div className="relative z-10">
               <h3 className="text-xl font-black uppercase mb-2">Need Help?</h3>
               <p className="text-xs font-bold text-gray-500 mb-4 leading-relaxed">
@@ -240,6 +276,7 @@ const LMS = () => {
       </div>
     </div>
   );
-}
+};
 
 export default LMS;
+

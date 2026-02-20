@@ -23,7 +23,7 @@ export default function ManageLibrary() {
   const [requests, setRequests]     = useState([]);
   const [issued,   setIssued]       = useState([]);
   const [search,   setSearch]       = useState("");
-  const [tab,      setTab]          = useState("pending"); // 'pending' | 'all'
+  const [tab,      setTab]          = useState("pending"); // 'pending' | 'all' | 'chat'
   const [loading,  setLoading]      = useState({ requests: false, issued: false });
   const [toast,    setToast]        = useState(null); // { msg, type }
 
@@ -31,6 +31,60 @@ export default function ManageLibrary() {
   const [showIssue,   setShowIssue]   = useState(false);
   const [issueForm,   setIssueForm]   = useState({ user_id: "", title: "", author: "" });
   const [issuing,     setIssuing]     = useState(false);
+  
+  // Chat state
+  const [chatUsers,   setChatUsers]   = useState([]);
+  const [activeChat,  setActiveChat]  = useState(null); // { id, name }
+  const [messages,    setMessages]    = useState([]);
+  const [chatMsg,     setChatMsg]     = useState("");
+  const [isSending,   setIsSending]   = useState(false);
+
+  const fetchChatUsers = useCallback(async () => {
+    try {
+      const r = await fetch(`${API}/chat-users`);
+      const d = await r.json();
+      setChatUsers(Array.isArray(d) ? d : []);
+    } catch (e) {
+      console.error("Failed to load chat users", e);
+    }
+  }, []);
+
+  const fetchMessages = useCallback(async (studentId) => {
+    if (!studentId) return;
+    try {
+      const r = await fetch(`${API}/messages?student_id=${studentId}`);
+      const d = await r.json();
+      setMessages(Array.isArray(d) ? d : []);
+    } catch (e) {
+      console.error("Failed to load messages", e);
+    }
+  }, []);
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!chatMsg.trim() || !activeChat || isSending) return;
+    setIsSending(true);
+    try {
+      const res = await fetch(`${API}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sender_id: "librarian",
+          receiver_id: activeChat.id,
+          message: chatMsg,
+          sender_role: "librarian"
+        }),
+      });
+      if (res.ok) {
+        setChatMsg("");
+        fetchMessages(activeChat.id);
+      }
+    } catch (e) {
+      showToast("Failed to send message", "error");
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   // ── data fetching ────────────────────────────────────────────────────────
   const fetchRequests = useCallback(async () => {
@@ -62,7 +116,16 @@ export default function ManageLibrary() {
   useEffect(() => {
     fetchRequests();
     fetchIssued();
-  }, [fetchRequests, fetchIssued]);
+    fetchChatUsers();
+  }, [fetchRequests, fetchIssued, fetchChatUsers]);
+
+  useEffect(() => {
+    let interval;
+    if (tab === 'chat' && activeChat) {
+        interval = setInterval(() => fetchMessages(activeChat.id), 5000);
+    }
+    return () => clearInterval(interval);
+  }, [tab, activeChat, fetchMessages]);
 
   // ── toast ────────────────────────────────────────────────────────────────
   const showToast = (msg, type = "success") => {
@@ -235,222 +298,262 @@ export default function ManageLibrary() {
           </div>
         )}
 
-        {/* ── Borrow Requests Table ── */}
-        <section className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+        {/* ── Tabs / Filters ── */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
             <h2 className="text-2xl font-black uppercase tracking-widest border-l-8 border-neo-red pl-4">
-              Borrow Requests
+                {tab === 'chat' ? 'Student Queries' : 'Book Management'}
             </h2>
             <div className="flex border-4 border-black overflow-hidden shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-              <button
-                onClick={() => setTab("pending")}
-                className={`px-5 py-2 font-black uppercase text-sm transition-colors ${
-                  tab === "pending" ? "bg-neo-red text-white" : "bg-white hover:bg-neo-bg"
-                }`}
-              >
-                Pending ({pendingRequests.length})
-              </button>
-              <button
-                onClick={() => setTab("all")}
-                className={`px-5 py-2 font-black uppercase text-sm border-l-4 border-black transition-colors ${
-                  tab === "all" ? "bg-black text-white" : "bg-white hover:bg-neo-bg"
-                }`}
-              >
-                All Requests
-              </button>
+                <button
+                    onClick={() => setTab("pending")}
+                    className={`px-5 py-2 font-black uppercase text-sm transition-colors ${
+                        tab === "pending" ? "bg-neo-red text-white" : "bg-white hover:bg-neo-bg"
+                    }`}
+                >
+                    Pending ({pendingRequests.length})
+                </button>
+                <button
+                    onClick={() => setTab("all")}
+                    className={`px-5 py-2 font-black uppercase text-sm border-l-4 border-black transition-colors ${
+                        tab === "all" ? "bg-black text-white" : "bg-white hover:bg-neo-bg"
+                    }`}
+                >
+                    All Requests
+                </button>
+                <button
+                    onClick={() => setTab("chat")}
+                    className={`px-5 py-2 font-black uppercase text-sm border-l-4 border-black transition-colors ${
+                        tab === "chat" ? "bg-neo-purple text-white" : "bg-white hover:bg-neo-bg"
+                    }`}
+                >
+                    Chat ({chatUsers.length})
+                </button>
             </div>
-          </div>
+        </div>
 
-          <div className="bg-white border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-x-auto">
-            {loading.requests ? (
-              <div className="p-12 text-center font-black uppercase text-slate-400 flex items-center justify-center gap-2">
-                <span className="material-symbols-outlined animate-spin">progress_activity</span>
-                Loading requests...
-              </div>
-            ) : displayedRequests.length === 0 ? (
-              <div className="p-12 text-center font-black uppercase text-slate-400">
-                No {tab === "pending" ? "pending" : ""} requests found.
-              </div>
-            ) : (
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-black text-white">
-                    <th className="p-4 font-black uppercase italic text-sm">Student</th>
-                    <th className="p-4 font-black uppercase italic text-sm border-l-2 border-white/20">Book</th>
-                    <th className="p-4 font-black uppercase italic text-sm border-l-2 border-white/20">Requested</th>
-                    <th className="p-4 font-black uppercase italic text-sm border-l-2 border-white/20 text-center">Status</th>
-                    <th className="p-4 font-black uppercase italic text-sm border-l-2 border-white/20 text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayedRequests.map((req) => (
-                    <tr
-                      key={req.id}
-                      className="border-b-2 border-black hover:bg-neo-yellow/20 transition-colors"
-                    >
-                      <td className="p-4">
-                        <p className="font-black text-sm">{req.student_name || "Unknown Student"}</p>
-                        {req.student_email && (
-                          <p className="text-xs font-bold text-slate-400">{req.student_email}</p>
-                        )}
-                        <span className="text-[10px] font-mono bg-neo-bg border border-black px-1 mt-1 inline-block text-slate-500">
-                          ID: {req.user_id}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <p className="font-black">{req.title}</p>
-                        {req.author && (
-                          <p className="text-xs font-bold text-slate-500">{req.author}</p>
-                        )}
-                      </td>
-                      <td className="p-4 font-mono text-sm font-bold">{fmt(req.requested_at)}</td>
-                      <td className="p-4 text-center">
-                        <span
-                          className={`inline-block px-3 py-1 border-2 border-black font-black text-xs uppercase ${
-                            STATUS_BADGE[req.status] || "bg-gray-200"
-                          }`}
-                        >
-                          {req.status}
-                        </span>
-                      </td>
-                      <td className="p-4 text-center">
-                        {req.status === "pending" ? (
-                          <div className="flex justify-center gap-2">
-                            <button
-                              onClick={() => handleDecision(req.id, "approved")}
-                              className="px-4 py-1.5 border-2 border-black bg-neo-green text-black font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
-                            >
-                              APPROVE
-                            </button>
-                            <button
-                              onClick={() => handleDecision(req.id, "rejected")}
-                              className="px-4 py-1.5 border-2 border-black bg-neo-red text-white font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
-                            >
-                              REJECT
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-xs font-bold text-slate-400 uppercase">
-                            {req.status === "approved" ? "✓ Approved" : "✗ Rejected"}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </section>
+        {/* ── Main Content Area ── */}
+        {tab !== 'chat' ? (
+            <div className="space-y-8">
+                {/* Borrow Requests Table */}
+                <div className="bg-white border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-x-auto">
+                    {loading.requests ? (
+                        <div className="p-12 text-center font-black uppercase text-slate-400 flex items-center justify-center gap-2">
+                            <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                            Loading requests...
+                        </div>
+                    ) : displayedRequests.length === 0 ? (
+                        <div className="p-12 text-center font-black uppercase text-slate-400">
+                            No {tab === "pending" ? "pending" : ""} requests found.
+                        </div>
+                    ) : (
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-black text-white">
+                                    <th className="p-4 font-black uppercase italic text-sm">Student</th>
+                                    <th className="p-4 font-black uppercase italic text-sm border-l-2 border-white/20">Book</th>
+                                    <th className="p-4 font-black uppercase italic text-sm border-l-2 border-white/20">Requested</th>
+                                    <th className="p-4 font-black uppercase italic text-sm border-l-2 border-white/20 text-center">Status</th>
+                                    <th className="p-4 font-black uppercase italic text-sm border-l-2 border-white/20 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {displayedRequests.map((req) => (
+                                    <tr key={req.id} className="border-b-2 border-black hover:bg-neo-yellow/20 transition-colors">
+                                        <td className="p-4">
+                                            <p className="font-black text-sm">{req.student_name || "Unknown Student"}</p>
+                                            {req.student_email && <p className="text-xs font-bold text-slate-400">{req.student_email}</p>}
+                                            <span className="text-[10px] font-mono bg-neo-bg border border-black px-1 mt-1 inline-block text-slate-500">
+                                                ID: {req.user_id}
+                                            </span>
+                                        </td>
+                                        <td className="p-4">
+                                            <p className="font-black">{req.title}</p>
+                                            {req.author && <p className="text-xs font-bold text-slate-500">{req.author}</p>}
+                                        </td>
+                                        <td className="p-4 font-mono text-sm font-bold">{fmt(req.requested_at)}</td>
+                                        <td className="p-4 text-center">
+                                            <span className={`inline-block px-3 py-1 border-2 border-black font-black text-xs uppercase ${STATUS_BADGE[req.status] || "bg-gray-200"}`}>
+                                                {req.status}
+                                            </span>
+                                        </td>
+                                        <td className="p-4 text-center">
+                                            {req.status === "pending" ? (
+                                                <div className="flex justify-center gap-2">
+                                                    <button onClick={() => handleDecision(req.id, "approved")} className="px-4 py-1.5 border-2 border-black bg-neo-green text-black font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all">APPROVE</button>
+                                                    <button onClick={() => handleDecision(req.id, "rejected")} className="px-4 py-1.5 border-2 border-black bg-neo-red text-white font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all">REJECT</button>
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs font-bold text-slate-400 uppercase">
+                                                    {req.status === "approved" ? "✓ Approved" : "✗ Rejected"}
+                                                </span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
 
-        {/* ── Currently Issued Books ── */}
-        <section className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 className="text-2xl font-black uppercase tracking-widest border-l-8 border-neo-blue pl-4">
-              Currently Issued Books
-            </h2>
-            {/* Search within issued */}
-            <div className="relative">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
-                search
-              </span>
-              <input
-                className="border-4 border-black pl-9 pr-4 py-2 font-bold outline-none focus:border-neo-blue shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] bg-white"
-                placeholder="Filter by title or student ID..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="bg-white border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-x-auto">
-            {loading.issued ? (
-              <div className="p-12 text-center font-black uppercase text-slate-400 flex items-center justify-center gap-2">
-                <span className="material-symbols-outlined animate-spin">progress_activity</span>
-                Loading issued books...
-              </div>
-            ) : filteredIssued.length === 0 ? (
-              <div className="p-12 text-center font-black uppercase text-slate-400">
-                No issued books found.
-              </div>
-            ) : (
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-neo-blue text-white">
-                    <th className="p-4 font-black uppercase italic text-sm">Cover</th>
-                    <th className="p-4 font-black uppercase italic text-sm border-l-2 border-white/20">Title & Student</th>
-                    <th className="p-4 font-black uppercase italic text-sm border-l-2 border-white/20 text-center">Issued On</th>
-                    <th className="p-4 font-black uppercase italic text-sm border-l-2 border-white/20 text-center">Due Date</th>
-                    <th className="p-4 font-black uppercase italic text-sm border-l-2 border-white/20 text-center">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredIssued.map((book) => {
-                    const isOverdue = new Date(book.due_date) < now;
-                    const daysLeft = Math.ceil(
-                      (new Date(book.due_date) - now) / (1000 * 60 * 60 * 24)
-                    );
-                    return (
-                      <tr
-                        key={book.id}
-                        className={`border-b-2 border-black transition-colors ${
-                          isOverdue ? "bg-neo-red/10 hover:bg-neo-red/20" : "hover:bg-neo-bg"
-                        }`}
-                      >
-                        <td className="p-4 w-20">
-                          <div className="w-12 h-16 border-2 border-black bg-gray-200 overflow-hidden">
-                            <img
-                              src={book.image || "https://placehold.co/80x110?text=📖"}
-                              alt={book.title}
-                              className="w-full h-full object-cover"
-                              referrerPolicy="no-referrer"
-                              onError={(e) => (e.target.src = "https://placehold.co/80x110?text=📖")}
+                {/* Currently Issued Books */}
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-2xl font-black uppercase tracking-widest border-l-8 border-neo-blue pl-4">Currently Issued</h2>
+                        <div className="relative">
+                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">search</span>
+                            <input
+                                className="border-4 border-black pl-9 pr-4 py-2 font-bold outline-none focus:border-neo-blue shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] bg-white"
+                                placeholder="Filter issued books..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
                             />
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <p className="font-black text-base uppercase leading-tight">{book.title}</p>
-                          {book.author && (
-                            <p className="text-xs font-bold text-slate-500 mt-0.5">{book.author}</p>
-                          )}
-                          <div className="mt-2 pt-2 border-t border-black/10">
-                            <p className="font-black text-sm">{book.student_name || "Unknown Student"}</p>
-                            {book.student_email && (
-                              <p className="text-xs font-bold text-slate-400">{book.student_email}</p>
-                            )}
-                            <span className="text-[10px] font-mono bg-neo-bg border border-black px-1 mt-0.5 inline-block text-slate-500">
-                              ID: {book.user_id}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="p-4 text-center font-mono font-bold text-sm">
-                          {fmt(book.issue_date)}
-                        </td>
-                        <td className={`p-4 text-center font-black ${isOverdue ? "text-neo-red" : ""}`}>
-                          <p className="font-mono text-sm">{fmt(book.due_date)}</p>
-                          <p className="text-xs font-bold mt-0.5 text-slate-500">
-                            {isOverdue
-                              ? `${Math.abs(daysLeft)} days overdue`
-                              : `${daysLeft} days left`}
-                          </p>
-                        </td>
-                        <td className="p-4 text-center">
-                          <span
-                            className={`inline-block px-3 py-1 border-2 border-black font-black text-xs uppercase ${
-                              isOverdue ? "bg-neo-red text-white -rotate-2" : "bg-neo-green text-black"
-                            }`}
-                          >
-                            {isOverdue ? "OVERDUE" : "ON TIME"}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </section>
+                        </div>
+                    </div>
+                    <div className="bg-white border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-x-auto">
+                        {loading.issued ? (
+                            <div className="p-12 text-center font-black uppercase text-slate-400 flex items-center justify-center gap-2">
+                                <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                                Loading issued books...
+                            </div>
+                        ) : filteredIssued.length === 0 ? (
+                            <div className="p-12 text-center font-black uppercase text-slate-400">No issued books found.</div>
+                        ) : (
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-neo-blue text-white">
+                                        <th className="p-4 font-black uppercase italic text-sm">Cover</th>
+                                        <th className="p-4 font-black uppercase italic text-sm border-l-2 border-white/20">Title & Student</th>
+                                        <th className="p-4 font-black uppercase italic text-sm border-l-2 border-white/20 text-center">Issued On</th>
+                                        <th className="p-4 font-black uppercase italic text-sm border-l-2 border-white/20 text-center">Due Date</th>
+                                        <th className="p-4 font-black uppercase italic text-sm border-l-2 border-white/20 text-center">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredIssued.map((book) => {
+                                        const isOverdue = new Date(book.due_date) < now;
+                                        const daysLeft = Math.ceil((new Date(book.due_date) - now) / (1000 * 60 * 60 * 24));
+                                        return (
+                                            <tr key={book.id} className={`border-b-2 border-black transition-colors ${isOverdue ? "bg-neo-red/10 hover:bg-neo-red/20" : "hover:bg-neo-bg"}`}>
+                                                <td className="p-4 w-20">
+                                                    <div className="w-12 h-16 border-2 border-black bg-gray-200 overflow-hidden">
+                                                        <img
+                                                            src={book.image || "https://placehold.co/80x110?text=📖"}
+                                                            alt={book.title}
+                                                            className="w-full h-full object-cover"
+                                                            referrerPolicy="no-referrer"
+                                                            onError={(e) => (e.target.src = "https://placehold.co/80x110?text=📖")}
+                                                        />
+                                                    </div>
+                                                </td>
+                                                <td className="p-4">
+                                                    <p className="font-black text-base uppercase leading-tight">{book.title}</p>
+                                                    {book.author && <p className="text-xs font-bold text-slate-500 mt-0.5">{book.author}</p>}
+                                                    <div className="mt-2 pt-2 border-t border-black/10">
+                                                        <p className="font-black text-sm">{book.student_name || "Unknown Student"}</p>
+                                                        {book.student_email && <p className="text-xs font-bold text-slate-400">{book.student_email}</p>}
+                                                        <span className="text-[10px] font-mono bg-neo-bg border border-black px-1 mt-0.5 inline-block text-slate-500">ID: {book.user_id}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="p-4 text-center font-mono font-bold text-sm">{fmt(book.issue_date)}</td>
+                                                <td className={`p-4 text-center font-black ${isOverdue ? "text-neo-red" : ""}`}>
+                                                    <p className="font-mono text-sm">{fmt(book.due_date)}</p>
+                                                    <p className="text-xs font-bold mt-0.5 text-slate-500">{isOverdue ? `${Math.abs(daysLeft)} days overdue` : `${daysLeft} days left`}</p>
+                                                </td>
+                                                <td className="p-4 text-center">
+                                                    <span className={`inline-block px-3 py-1 border-2 border-black font-black text-xs uppercase ${isOverdue ? "bg-neo-red text-white -rotate-2" : "bg-neo-green text-black"}`}>
+                                                        {isOverdue ? "OVERDUE" : "ON TIME"}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </div>
+            </div>
+        ) : (
+            /* Chat Interface */
+            <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-slide-up">
+                {/* User List */}
+                <div className="bg-white border-4 border-black shadow-neo overflow-hidden flex flex-col h-[600px]">
+                    <div className="bg-black text-white p-4 font-black uppercase italic italic">Students</div>
+                    <div className="flex-1 overflow-y-auto divide-y-2 divide-black">
+                        {chatUsers.length === 0 ? (
+                            <div className="p-10 text-center text-slate-400 font-black uppercase">No active chats</div>
+                        ) : (
+                            chatUsers.map(u => (
+                                <button 
+                                    key={u.id}
+                                    onClick={() => {
+                                        setActiveChat(u);
+                                        fetchMessages(u.id);
+                                    }}
+                                    className={`w-full p-4 text-left hover:bg-neo-yellow/20 transition-colors flex items-center justify-between group
+                                        ${activeChat?.id === u.id ? 'bg-neo-yellow/30' : ''}`}
+                                >
+                                    <div>
+                                        <p className="font-black text-sm uppercase">{u.name}</p>
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase">{u.email}</p>
+                                    </div>
+                                    <span className="material-symbols-outlined text-neo-blue group-hover:translate-x-1 transition-transform">chevron_right</span>
+                                </button>
+                            ))
+                        )}
+                    </div>
+                </div>
+
+                {/* Message Thread */}
+                <div className="lg:col-span-2 bg-white border-4 border-black shadow-neo flex flex-col h-[600px] relative">
+                    {!activeChat ? (
+                        <div className="flex-1 flex flex-col items-center justify-center text-slate-300">
+                            <span className="material-symbols-outlined text-6xl">chat_bubble</span>
+                            <p className="font-black uppercase mt-2">Select a student to view messages</p>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="bg-neo-bg border-b-4 border-black p-4 flex items-center gap-3">
+                                <div className="size-10 bg-neo-purple border-2 border-black flex items-center justify-center text-white">
+                                    <span className="material-symbols-outlined">person</span>
+                                </div>
+                                <div>
+                                    <h3 className="font-black uppercase text-sm">{activeChat.name}</h3>
+                                    <p className="text-[10px] font-bold text-slate-500 italic">Student Thread</p>
+                                </div>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-neo-bg">
+                                {messages.map((m, i) => (
+                                    <div key={i} className={`flex flex-col ${m.sender_role === 'librarian' ? 'items-end' : 'items-start'}`}>
+                                        <div className={`max-w-[70%] p-3 border-2 border-black font-bold text-sm shadow-neo-sm
+                                            ${m.sender_role === 'librarian' ? 'bg-neo-blue text-white' : 'bg-white text-black'}`}>
+                                            {m.message}
+                                        </div>
+                                        <span className="text-[9px] font-black uppercase mt-1 opacity-50">
+                                            {m.sender_role === 'librarian' ? 'You' : activeChat.name} • {new Date(m.created_at).toLocaleTimeString()}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                            <form onSubmit={handleSendMessage} className="p-4 bg-white border-t-4 border-black flex gap-3">
+                                <input 
+                                    className="flex-1 border-4 border-black p-3 font-bold outline-none focus:bg-neo-yellow transition-colors"
+                                    placeholder="Type your response..."
+                                    value={chatMsg}
+                                    onChange={(e) => setChatMsg(e.target.value)}
+                                />
+                                <button 
+                                    disabled={isSending}
+                                    className="px-6 bg-black text-white border-4 border-black font-black uppercase hover:bg-neo-purple transition-all shadow-neo-sm active:shadow-none active:translate-y-1"
+                                >
+                                    SEND
+                                </button>
+                            </form>
+                        </>
+                    )}
+                </div>
+            </section>
+        )}
       </div>
     </div>
   );
