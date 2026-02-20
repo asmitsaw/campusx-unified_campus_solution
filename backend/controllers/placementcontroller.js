@@ -1,4 +1,5 @@
 import supabase from "../config/supabase.js";
+import nodemailer from "nodemailer";
 
 // ─────────────────────────────────────────────
 // TPO: Create a new placement drive
@@ -24,6 +25,73 @@ export const createDrive = async (req, res) => {
     if (training_sessions && Array.isArray(training_sessions) && training_sessions.length > 0) {
       const sessions = training_sessions.map(s => ({ ...s, placement_id: data.id }));
       await supabase.from("training_sessions").insert(sessions);
+    }
+
+    // --- Send Email Notification ---
+    try {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail', // or use host/port if using another service
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+
+      const mailOptions = {
+  from: process.env.EMAIL_USER || '"VegaERP TPO" <no-reply@vegaerp.com>',
+  to: "sumitpatil141005@gmail.com",
+  subject: `🚀 New Placement Drive: ${company} | ${role}`,
+  html: `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden; background-color: #ffffff;">
+      <div style="background-color: #2563eb; padding: 30px 20px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 24px; letter-spacing: 1px;">VegaERP Placement Portal</h1>
+      </div>
+
+      <div style="padding: 30px 25px;">
+        <h2 style="color: #1f2937; margin-top: 0;">New Opportunity Posted!</h2>
+        <p style="color: #4b5563; line-height: 1.6;">A new placement drive has been added. Check the details below and apply before the deadline.</p>
+        
+        <div style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 20px; margin: 25px 0; border-radius: 4px;">
+          <h3 style="margin: 0 0 10px 0; color: #1e40af; font-size: 20px;">${company}</h3>
+          <p style="margin: 5px 0; color: #374151;"><strong>Role:</strong> ${role}</p>
+          
+          <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+            <div style="flex: 1; min-width: 120px;">
+              <span style="font-size: 12px; color: #64748b; text-transform: uppercase;">Package</span>
+              <p style="margin: 5px 0; font-weight: bold; color: #059669;">${package_lpa} LPA</p>
+            </div>
+            <div style="flex: 1; min-width: 120px;">
+              <span style="font-size: 12px; color: #64748b; text-transform: uppercase;">Location</span>
+              <p style="margin: 5px 0; font-weight: bold; color: #1f2937;">${location || "N/A"}</p>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 25px;">
+          <p style="margin: 8px 0; color: #374151;"><strong>🗓 Drive Date:</strong> ${drive_date || "TBD"}</p>
+          <p style="margin: 8px 0; color: #374151;"><strong>⚠️ Deadline:</strong> <span style="color: #dc2626; font-weight: bold;">${deadline}</span></p>
+          <p style="margin: 15px 0 5px 0; color: #374151;"><strong>Eligibility:</strong></p>
+          <p style="margin: 0; color: #4b5563; font-size: 14px; background: #f1f5f9; padding: 10px; border-radius: 6px;">${eligibility || "Open to all"}</p>
+        </div>
+
+        <div style="text-align: center; margin-top: 35px;">
+          <a href="${process.env.PORTAL_URL || '#'}" style="background-color: #2563eb; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">View & Apply Now</a>
+        </div>
+      </div>
+
+      <div style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e0e0e0;">
+        <p style="margin: 0; font-size: 12px; color: #9ca3af;">This is an automated notification from VegaERP TPO Portal.</p>
+        <p style="margin: 5px 0 0 0; font-size: 12px; color: #9ca3af;">Xavier Institute of Engineering</p>
+      </div>
+    </div>
+  `,
+};
+
+      await transporter.sendMail(mailOptions);
+      console.log(`Email sent to sumitpatil141005@gmail.com for ${company}`);
+    } catch (emailError) {
+      console.error("Failed to send placement notification email:", emailError.message);
+      // We don't throw here to ensure the API still responds with success for drive creation
     }
 
     res.json({ success: true, data, message: "Placement drive created successfully" });
