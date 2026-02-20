@@ -12,6 +12,7 @@ import libraryRoutes from "./routes/lib_routes.js";
 import batchRoutes from "./routes/batchroutes.js";
 import classRoutes from "./routes/classroutes.js";
 import hostelRoutes from "./routes/hostelroutes.js";
+import evRoutes from "./routes/ev_routes.js";
 
 dotenv.config();
 
@@ -19,10 +20,11 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+// Serve locally-stored event banners as static files
+app.use("/uploads", express.static("uploads"));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/dashboard", dashboardRoutes);
-app.use("/api/events", eventRoutes);
 app.use("/api/placements", placementRoutes);
 app.use("/api/library", libraryRoutes);
 app.use("/api/batches", batchRoutes);
@@ -31,13 +33,22 @@ app.use("/api/hostel", hostelRoutes);
 
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/materials", materialRoutes);
+app.use("/api/ev-events", evRoutes);
 
 app.get("/", (req, res) => {
-  res.send("🚀 API Running with Supabase");
+  res.send("🚀 API Running with Supabase - EV1 VERSION");
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = 5055; // Port 5055 to bypass all ghost processes
 
-app.listen(PORT, () => {
-  console.log(`🔥 Server running on port ${PORT}`);
+const server = app.listen(PORT, () => {
+  console.log(`🔥 EVENT SYSTEM (v3) ON PORT ${PORT}`);
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.log(`❌ Port ${PORT} already in use. Try another one.`);
+  } else {
+    console.log(`❌ Server error:`, err);
+  }
 });

@@ -1,6 +1,17 @@
 import supabase from "../config/supabase.js";
+import bcrypt from "bcryptjs";
 
-// Create a batch + add students
+// Generate a readable random password
+function generatePassword(length = 8) {
+    const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+    let password = "";
+    for (let i = 0; i < length; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+}
+
+// Create a batch + add students + create user accounts + return credentials
 export const createBatch = async (req, res) => {
     try {
         const { name, branch, year, academic_year, students } = req.body;
@@ -20,26 +31,84 @@ export const createBatch = async (req, res) => {
 
         // Add students if provided
         let insertedStudents = [];
+        const credentials = []; // { name, email, roll_no, password }
+
         if (students && students.length > 0) {
-            const rows = students.map((s) => ({
-                batch_id: batch.id,
-                roll_no: s.roll_no,
-                name: s.name,
-                email: s.email || null,
-            }));
+            for (const s of students) {
+                const email = s.email || `${s.roll_no.toLowerCase().replace(/\s/g, "")}@campusx.edu`;
+                const plainPassword = generatePassword(8);
 
-            const { data: stuData, error: stuErr } = await supabase
-                .from("batch_students")
-                .insert(rows)
-                .select();
+                // Check if user already exists
+                const { data: existingUser } = await supabase
+                    .from("users")
+                    .select("id, name, email")
+                    .eq("email", email)
+                    .maybeSingle();
 
-            if (stuErr) throw stuErr;
-            insertedStudents = stuData;
+                let userId;
+
+                if (existingUser) {
+                    // User already exists — link them
+                    userId = existingUser.id;
+                    credentials.push({
+                        roll_no: s.roll_no,
+                        name: s.name,
+                        email,
+                        password: "(existing account — password unchanged)",
+                    });
+                } else {
+                    // Create new user account
+                    const hashedPassword = await bcrypt.hash(plainPassword, 10);
+                    const { data: newUser, error: userErr } = await supabase
+                        .from("users")
+                        .insert([{ name: s.name, email, password: hashedPassword, role: "student" }])
+                        .select("id")
+                        .single();
+
+                    if (userErr) {
+                        console.error(`Failed to create user for ${email}:`, userErr.message);
+                        credentials.push({
+                            roll_no: s.roll_no,
+                            name: s.name,
+                            email,
+                            password: `ERROR: ${userErr.message}`,
+                        });
+                        continue;
+                    }
+                    userId = newUser.id;
+                    credentials.push({
+                        roll_no: s.roll_no,
+                        name: s.name,
+                        email,
+                        password: plainPassword,
+                    });
+                }
+
+                // Insert batch_student row
+                const { data: stuData, error: stuErr } = await supabase
+                    .from("batch_students")
+                    .insert([{
+                        batch_id: batch.id,
+                        roll_no: s.roll_no,
+                        name: s.name,
+                        email,
+                        user_id: userId,
+                    }])
+                    .select()
+                    .single();
+
+                if (stuErr) {
+                    console.error(`Failed to insert batch_student for ${s.roll_no}:`, stuErr.message);
+                } else {
+                    insertedStudents.push(stuData);
+                }
+            }
         }
 
         res.status(201).json({
             success: true,
             data: { ...batch, students: insertedStudents },
+            credentials, // Frontend will use this to generate downloadable CSV
         });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });

@@ -23,7 +23,7 @@ export const getDashboard = async (req, res) => {
 
     // 🔹 Events
     const { data: events } = await supabase
-      .from("events")
+      .from("event1")
       .select("title, description, date")
       .order("date", { ascending: true })
       .limit(3);

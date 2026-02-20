@@ -1,6 +1,6 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // Student Layout & Pages
@@ -23,10 +23,12 @@ import FacultyDashboard from "./pages/faculty/FacultyDashboard";
 import ManageAttendance from "./pages/faculty/ManageAttendance";
 import ManageStudents from "./pages/faculty/ManageStudents";
 import ManageEvents from "./pages/faculty/ManageEvents";
+import EvManageDashboard from "./pages/faculty/ev_ManageDashboard";
 import ManageLibrary from "./pages/faculty/lib_ManageLibrary";
 import LibAttendanceLibrarian from "./pages/faculty/lib_AttendanceLibrarian";
 import ManageHostel from "./pages/faculty/ManageHostel";
 import ManagePlacements from "./pages/faculty/ManagePlacements";
+import EventParticipants from "./pages/faculty/EventParticipants";
 import AdminPanel from "./pages/faculty/AdminPanel";
 import ManageClasses from "./pages/faculty/ManageClasses";
 
@@ -35,6 +37,17 @@ import Login from "./pages/Login";
 
 const STUDENT_ROLES = ["student"];
 const FACULTY_ROLES = ["faculty", "event_manager", "librarian", "hostel_warden", "tpo", "admin"];
+
+// Sends each faculty role straight to their primary page
+function RoleRedirect() {
+  const { user } = useAuth();
+  const role = user?.role;
+  if (role === "event_manager")  return <Navigate to="/faculty/events"     replace />;
+  if (role === "librarian")      return <Navigate to="/faculty/library"    replace />;
+  if (role === "hostel_warden")  return <Navigate to="/faculty/hostel"     replace />;
+  if (role === "tpo")            return <Navigate to="/faculty/placements" replace />;
+  return <Navigate to="/faculty/dashboard" replace />;
+}
 
 function App() {
   return (
@@ -75,12 +88,13 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<Navigate to="/faculty/dashboard" replace />} />
+            <Route index element={<RoleRedirect />} />
             <Route path="dashboard" element={<FacultyDashboard />} />
             <Route path="attendance" element={<ManageAttendance />} />
             <Route path="students" element={<ManageStudents />} />
             <Route path="classes" element={<ManageClasses />} />
-            <Route path="events" element={<ManageEvents />} />
+            <Route path="events" element={<EvManageDashboard />} />
+            <Route path="events/:id/participants" element={<EventParticipants />} />
             <Route path="library" element={<ManageLibrary />} />
             <Route path="lib-attendance" element={<LibAttendanceLibrarian />} />
             <Route path="hostel" element={<ManageHostel />} />
