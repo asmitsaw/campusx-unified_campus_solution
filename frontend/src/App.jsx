@@ -25,6 +25,7 @@ import ManageLibrary from "./pages/faculty/lib_ManageLibrary";
 import ManageHostel from "./pages/faculty/ManageHostel";
 import ManagePlacements from "./pages/faculty/ManagePlacements";
 import AdminPanel from "./pages/faculty/AdminPanel";
+import ManageClasses from "./pages/faculty/ManageClasses";
 
 // Auth
 import Login from "./pages/Login";
@@ -74,6 +75,7 @@ function App() {
             <Route path="dashboard" element={<FacultyDashboard />} />
             <Route path="attendance" element={<ManageAttendance />} />
             <Route path="students" element={<ManageStudents />} />
+            <Route path="classes" element={<ManageClasses />} />
             <Route path="events" element={<ManageEvents />} />
             <Route path="library" element={<ManageLibrary />} />
             <Route path="hostel" element={<ManageHostel />} />

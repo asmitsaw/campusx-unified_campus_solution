@@ -32,3 +32,7 @@ export function apiPost(endpoint, body) {
 export function apiGet(endpoint) {
     return apiRequest(endpoint, { method: "GET" });
 }
+
+export function apiDelete(endpoint) {
+    return apiRequest(endpoint, { method: "DELETE" });
+}

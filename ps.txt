@@ -1,0 +1,40 @@
+WD-05 
+National Institute of Technology (NIT Consortium) 
+Unified Campus Super App (Web-Based Academic & Service Dashboard) 
+Background & Organizational Context 
+Across India, institutions like NITs, IITs, and large state universities operate multiple independent digital 
+systems: 
+ LMS portal 
+ Attendance portal 
+ Hostel management 
+ Exam result portal 
+ Placement system 
+ Event registration site 
+ Library database 
+Students must: 
+ Log into multiple platforms daily 
+ Track deadlines manually 
+ Switch interfaces repeatedly 
+ Miss important notifications 
+Faculty similarly use separate portals for: 
+ Attendance upload 
+ Result entry 
+ Course materials 
+The NIT Consortium proposes a Unified Campus Super App (Web-based prototype) to streamline academic 
+and campus services under a single intelligent dashboard. 
+Problem Statement 
+Design and develop a centralized, role-based campus dashboard web application that consolidates: 
+ Academic tracking 
+ Attendance monitoring 
+ Event notifications 
+ Library status 
+ Placement updates 
+The solution must simulate integration of multiple campus services through modular design. 
+Minimum Deliverables (12-Hour Scope) 
+✔ Role-based authentication 
+✔ Unified dashboard 
+✔ Minimum 5 modules 
+✔ Notification logic 
+✔ Responsive UI 
+Bonus: 
+Backend API simulation. 
