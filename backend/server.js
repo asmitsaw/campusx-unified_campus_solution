@@ -30,7 +30,7 @@ app.use("/api/classes", classRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/materials", materialRoutes);
 
-app.get("/", (req, res) => { 
+app.get("/", (req, res) => {
   res.send("🚀 API Running with Supabase");
 });
 
