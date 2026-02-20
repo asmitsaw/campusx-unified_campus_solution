@@ -108,12 +108,7 @@ export default function Login() {
                 <label className="text-sm font-black uppercase tracking-wide">
                   Password
                 </label>
-                <a
-                  href="#"
-                  className="text-xs font-black uppercase underline decoration-2 hover:text-[#137fec]"
-                >
-                  Forgot?
-                </a>
+               
               </div>
               <div className="relative group">
                 <div className="absolute top-3.5 left-3 pointer-events-none z-10">
