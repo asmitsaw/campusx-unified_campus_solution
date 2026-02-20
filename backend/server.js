@@ -11,6 +11,7 @@ import materialRoutes from "./routes/materialRoutes.js"
 import libraryRoutes from "./routes/lib_routes.js";
 import batchRoutes from "./routes/batchroutes.js";
 import classRoutes from "./routes/classroutes.js";
+import hostelRoutes from "./routes/hostelroutes.js";
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ app.use("/api/placements", placementRoutes);
 app.use("/api/library", libraryRoutes);
 app.use("/api/batches", batchRoutes);
 app.use("/api/classes", classRoutes);
+app.use("/api/hostel", hostelRoutes);
 
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/materials", materialRoutes);

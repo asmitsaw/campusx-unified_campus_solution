@@ -1,251 +1,228 @@
-import React from 'react';
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
+import { apiGet, apiPost } from "../utils/api";
 
 export default function Hostel() {
-  return (
-    <div className="bg-[#f0f0f0] text-black min-h-screen pb-10 p-6 -m-6 font-display" style={{ backgroundImage: "radial-gradient(#000 1px, transparent 1px)", backgroundSize: "20px 20px" }}>
-        {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col gap-8">
-                {/* Header Card */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 bg-white border-4 border-black p-6 shadow-neo">
-                    <div>
-                        <h1 className="text-5xl font-black text-black mb-2 uppercase tracking-tighter">Hostel <span className="text-neo-accent-blue stroke-black" style={{ WebkitTextStroke: "2px black" }}>Dashboard</span></h1>
-                        <p className="text-black font-bold text-lg border-l-4 border-neo-accent-pink pl-3">Manage your stay, payments, and requests.</p>
-                    </div>
-                    <div className="px-4 py-2 bg-neo-accent-green border-4 border-black font-bold text-black flex items-center gap-2 shadow-neo-sm">
-                        <span className="w-3 h-3 bg-black rounded-full animate-pulse"></span>
-                        CHECKED IN
-                    </div>
-                </div>
+    const { user } = useAuth();
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Hostel Info */}
-                    <div className="border-4 border-black shadow-[6px_6px_0px_0px_#000] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[8px_8px_0px_0px_#000] transition-all p-0 relative overflow-hidden group bg-neo-accent-yellow">
-                        <div className="border-b-4 border-black bg-white p-4 flex justify-between items-center">
-                            <h2 className="text-xl font-black uppercase flex items-center gap-2">
-                                <span className="material-symbols-outlined font-bold">info</span>
-                                Hostel Info
-                            </h2>
-                        </div>
-                        <div className="p-6 space-y-6">
-                            <div className="bg-white border-4 border-black p-4 shadow-neo-sm transform -rotate-1">
-                                <span className="text-xs font-black uppercase tracking-wider block mb-1">Allocated Room</span>
-                                <span className="font-mono text-3xl font-black text-black">B-304</span>
-                            </div>
-                            <div className="bg-white border-4 border-black p-4 shadow-neo-sm transform rotate-1">
-                                <span className="text-xs font-black uppercase tracking-wider block mb-1">Hostel Block</span>
-                                <span className="font-black text-xl text-black">Cauvery (Boys)</span>
-                            </div>
-                            <div className="pt-2 border-t-4 border-black border-dashed">
-                                <p className="text-xs font-black uppercase bg-black text-white inline-block px-2 py-1 mb-3">Warden Contact</p>
-                                <div className="flex items-center gap-4 bg-white border-2 border-black p-2">
-                                    <div className="h-10 w-10 bg-neo-accent-pink border-2 border-black flex items-center justify-center">
-                                        <span className="material-symbols-outlined text-black font-bold">person</span>
-                                    </div>
-                                    <div>
-                                        <p className="text-base font-bold text-black">Dr. S. K. Gupta</p>
-                                        <p className="text-sm font-bold text-gray-600">+91 98765 43210</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+    const [complaints, setComplaints] = useState([]);
+    const [messMenu, setMessMenu] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-                    {/* Fee Details */}
-                    <div className="border-4 border-black shadow-[6px_6px_0px_0px_#000] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[8px_8px_0px_0px_#000] transition-all p-0 relative bg-white">
-                        <div className="border-b-4 border-black bg-white p-4 flex justify-between items-center">
-                            <h2 className="text-xl font-black uppercase flex items-center gap-2">
-                                <span className="material-symbols-outlined font-bold">payments</span>
-                                Fee Details
-                            </h2>
-                            <span className="px-2 py-1 bg-neo-accent-orange border-2 border-black text-white text-xs font-black flex items-center gap-1 shadow-neo-sm animate-bounce">
-                                <span className="material-symbols-outlined text-[14px] font-bold">warning</span>
-                                OVERDUE
-                            </span>
+    // Complaint form
+    const [complaintForm, setComplaintForm] = useState({ room_no: "", category: "Electrical", description: "" });
+    const [submitting, setSubmitting] = useState(false);
+    const [submitSuccess, setSubmitSuccess] = useState(false);
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            const today = days[new Date().getDay()];
+            const [compRes, messRes] = await Promise.all([
+                apiGet("/hostel/complaints"),
+                apiGet(`/hostel/mess?day=${today}`),
+            ]);
+            setComplaints(compRes.data);
+            setMessMenu(messRes.data);
+        } catch (e) {
+            console.error(e);
+        }
+        setLoading(false);
+    };
+
+    const handleSubmitComplaint = async (e) => {
+        e.preventDefault();
+        if (!complaintForm.room_no || !complaintForm.category) return alert("Room No and Category are required");
+        setSubmitting(true);
+        try {
+            await apiPost("/hostel/complaints", complaintForm);
+            setComplaintForm({ room_no: "", category: "Electrical", description: "" });
+            setSubmitSuccess(true);
+            setTimeout(() => setSubmitSuccess(false), 3000);
+            fetchData();
+        } catch (e) {
+            alert(e.message);
+        }
+        setSubmitting(false);
+    };
+
+    const MEAL_COLORS = { Breakfast: "neo-accent-green", Lunch: "neo-accent-yellow", Snacks: "neo-accent-orange", Dinner: "neo-accent-blue" };
+    const STATUS_BADGE = { Pending: "bg-neo-accent-orange text-white", "In Progress": "bg-neo-accent-yellow text-black", Resolved: "bg-neo-accent-green text-black" };
+
+    return (
+        <div className="bg-[#f0f0f0] text-black min-h-screen pb-10 p-6 -m-6 font-display" style={{ backgroundImage: "radial-gradient(#000 1px, transparent 1px)", backgroundSize: "20px 20px" }}>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex flex-col gap-8">
+                    {/* Header Card */}
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 bg-white border-4 border-black p-6 shadow-neo">
+                        <div>
+                            <h1 className="text-5xl font-black text-black mb-2 uppercase tracking-tighter">Hostel <span className="text-neo-accent-blue stroke-black" style={{ WebkitTextStroke: "2px black" }}>Dashboard</span></h1>
+                            <p className="text-black font-bold text-lg border-l-4 border-neo-accent-pink pl-3">Manage your stay, submit complaints, and check the mess menu.</p>
                         </div>
-                        <div className="p-6">
-                            <div className="flex flex-col gap-2 mb-6 bg-gray-100 border-4 border-black p-4">
-                                <span className="text-xs font-black uppercase">Outstanding Balance</span>
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-4xl font-black text-black">₹ 24,500</span>
-                                    <span className="text-sm font-bold text-gray-600">/ Sem</span>
-                                </div>
-                                <span className="text-xs font-bold text-white bg-neo-accent-orange px-2 py-1 inline-block w-fit border-2 border-black">Due: 15 Oct 2023</span>
-                            </div>
-                            <div className="flex flex-col gap-4">
-                                <button className="w-full bg-neo-accent-blue border-3 border-black shadow-[4px_4px_0px_0px_#000] hover:bg-blue-400 font-extrabold uppercase py-4 px-4 text-lg flex justify-center items-center gap-2 active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0px_0px_#000] transition-all">
-                                    Pay Now
-                                    <span className="material-symbols-outlined font-bold">arrow_forward</span>
-                                </button>
-                                <button className="w-full py-2 bg-white border-3 border-black shadow-[4px_4px_0px_0px_#000] hover:bg-gray-50 flex items-center justify-center gap-2 text-sm font-extrabold uppercase active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0px_0px_#000] transition-all">
-                                    <span className="material-symbols-outlined text-lg">receipt_long</span>
-                                    View History
-                                </button>
-                            </div>
+                        <div className="px-4 py-2 bg-neo-accent-green border-4 border-black font-bold text-black flex items-center gap-2 shadow-neo-sm">
+                            <span className="w-3 h-3 bg-black rounded-full animate-pulse"></span>
+                            RESIDENT
                         </div>
                     </div>
 
                     {/* Quick Actions */}
-                    <div className="border-4 border-black shadow-[6px_6px_0px_0px_#000] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[8px_8px_0px_0px_#000] transition-all p-0 flex flex-col bg-neo-accent-pink">
-                        <div className="border-b-4 border-black bg-white p-4">
-                            <h2 className="text-xl font-black uppercase flex items-center gap-2">
-                                <span className="material-symbols-outlined font-bold">bolt</span>
-                                Quick Actions
-                            </h2>
-                        </div>
-                        <div className="p-6 h-full flex items-center">
-                            <div className="grid grid-cols-2 gap-4 w-full">
-                                <button className="aspect-square bg-white hover:bg-neo-accent-green border-4 border-black shadow-neo-sm hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all flex flex-col items-center justify-center gap-2 text-center group">
-                                    <span className="material-symbols-outlined text-4xl font-bold text-black group-hover:scale-110 transition-transform">wifi_password</span>
-                                    <span className="text-sm font-black text-black uppercase">Wifi Access</span>
-                                </button>
-                                <button className="aspect-square bg-white hover:bg-neo-accent-yellow border-4 border-black shadow-neo-sm hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all flex flex-col items-center justify-center gap-2 text-center group">
-                                    <span className="material-symbols-outlined text-4xl font-bold text-black group-hover:scale-110 transition-transform">laundry</span>
-                                    <span className="text-sm font-black text-black uppercase">Laundry</span>
-                                </button>
-                                <button className="aspect-square bg-white hover:bg-neo-accent-orange border-4 border-black shadow-neo-sm hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all flex flex-col items-center justify-center gap-2 text-center group">
-                                    <span className="material-symbols-outlined text-4xl font-bold text-black group-hover:scale-110 transition-transform">local_shipping</span>
-                                    <span className="text-sm font-black text-black uppercase">Out Pass</span>
-                                </button>
-                                <button className="aspect-square bg-white hover:bg-neo-accent-blue border-4 border-black shadow-neo-sm hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all flex flex-col items-center justify-center gap-2 text-center group">
-                                    <span className="material-symbols-outlined text-4xl font-bold text-black group-hover:scale-110 transition-transform">calendar_month</span>
-                                    <span className="text-sm font-black text-black uppercase">Events</span>
-                                </button>
-                            </div>
-                        </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {[
+                            { icon: "wifi_password", label: "Wifi Access", color: "neo-accent-green" },
+                            { icon: "laundry", label: "Laundry", color: "neo-accent-yellow" },
+                            { icon: "local_shipping", label: "Out Pass", color: "neo-accent-orange" },
+                            { icon: "calendar_month", label: "Events", color: "neo-accent-blue" },
+                        ].map((a, i) => (
+                            <button key={i} className={`bg-white hover:bg-${a.color} border-4 border-black shadow-neo-sm hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all flex flex-col items-center justify-center gap-2 p-6 group`}>
+                                <span className="material-symbols-outlined text-4xl font-bold text-black group-hover:scale-110 transition-transform">{a.icon}</span>
+                                <span className="text-sm font-black text-black uppercase">{a.label}</span>
+                            </button>
+                        ))}
                     </div>
-                </div>
 
-                {/* Mess Menu */}
-                <div className="border-4 border-black shadow-[6px_6px_0px_0px_#000] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[8px_8px_0px_0px_#000] transition-all p-0 bg-white">
-                    <div className="border-b-4 border-black bg-white p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <h2 className="text-2xl font-black uppercase flex items-center gap-2">
-                            <span className="material-symbols-outlined font-bold text-3xl">restaurant_menu</span>
-                            Mess Menu <span className="bg-black text-white px-2 text-lg italic">Weekly</span>
-                        </h2>
-                        <div className="flex gap-2 items-center bg-neo-accent-yellow border-2 border-black p-2 shadow-neo-sm">
-                            <span className="text-xs font-black uppercase mr-2">Rate today's food:</span>
-                            <div className="flex gap-1">
-                                <button className="text-black hover:scale-125 transition-transform"><span className="material-symbols-outlined font-bold" style={{ fontVariationSettings: "'FILL' 1" }}>star</span></button>
-                                <button className="text-black hover:scale-125 transition-transform"><span className="material-symbols-outlined font-bold" style={{ fontVariationSettings: "'FILL' 1" }}>star</span></button>
-                                <button className="text-black hover:scale-125 transition-transform"><span className="material-symbols-outlined font-bold" style={{ fontVariationSettings: "'FILL' 1" }}>star</span></button>
-                                <button className="text-black hover:scale-125 transition-transform"><span className="material-symbols-outlined font-bold">star</span></button>
-                                <button className="text-black/30 hover:text-black hover:scale-125 transition-transform"><span className="material-symbols-outlined font-bold">star</span></button>
-                            </div>
+                    {/* Mess Menu */}
+                    <div className="border-4 border-black shadow-[6px_6px_0px_0px_#000] bg-white">
+                        <div className="border-b-4 border-black bg-white p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <h2 className="text-2xl font-black uppercase flex items-center gap-2">
+                                <span className="material-symbols-outlined font-bold text-3xl">restaurant_menu</span>
+                                Mess Menu <span className="bg-black text-white px-2 text-lg italic">Today</span>
+                            </h2>
                         </div>
+                        {loading ? (
+                            <div className="p-8 text-center font-bold text-slate-400">Loading...</div>
+                        ) : messMenu.length === 0 ? (
+                            <div className="p-8 text-center font-bold text-slate-400">No menu available for today</div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y-4 md:divide-y-0 md:divide-x-4 divide-black">
+                                {messMenu.map((meal, i) => (
+                                    <div key={i} className={`p-6 hover:bg-${MEAL_COLORS[meal.meal]}/20 transition-colors`}>
+                                        <div className="flex justify-between items-center mb-4 border-b-2 border-black pb-2">
+                                            <h3 className={`font-black text-lg uppercase bg-${MEAL_COLORS[meal.meal]} inline-block px-1 border-2 border-black shadow-neo-sm`}>{meal.meal}</h3>
+                                            <span className="text-xs font-bold bg-black text-white px-1">{meal.time_slot}</span>
+                                        </div>
+                                        <ul className="text-sm space-y-3 font-bold">
+                                            {meal.items.map((item, j) => (
+                                                <li key={j} className="flex items-center gap-3"><span className="w-3 h-3 bg-black"></span> {item}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
-                    {/* Menu Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y-4 md:divide-y-0 md:divide-x-4 divide-black">
-                         <div className="p-6 bg-white hover:bg-neo-accent-green/20 transition-colors">
-                            <div className="flex justify-between items-center mb-4 border-b-2 border-black pb-2">
-                                <h3 className="font-black text-lg uppercase bg-neo-accent-green inline-block px-1 border-2 border-black shadow-neo-sm">Breakfast</h3>
-                                <span className="text-xs font-bold bg-black text-white px-1">07:30 - 09:30</span>
-                            </div>
-                            <ul className="text-sm space-y-3 font-bold">
-                                <li className="flex items-center gap-3"><span className="w-3 h-3 bg-black"></span> Masala Dosa</li>
-                                <li className="flex items-center gap-3"><span className="w-3 h-3 bg-black"></span> Sambar & Chutney</li>
-                            </ul>
-                        </div>
-                        <div className="p-6 bg-white hover:bg-neo-accent-yellow/20 transition-colors">
-                            <div className="flex justify-between items-center mb-4 border-b-2 border-black pb-2">
-                                <h3 className="font-black text-lg uppercase bg-neo-accent-yellow inline-block px-1 border-2 border-black shadow-neo-sm">Lunch</h3>
-                                <span className="text-xs font-bold bg-black text-white px-1">12:30 - 14:30</span>
-                            </div>
-                            <ul className="text-sm space-y-3 font-bold">
-                                <li className="flex items-center gap-3"><span className="w-3 h-3 bg-black"></span> Veg Pulao</li>
-                                <li className="flex items-center gap-3"><span className="w-3 h-3 bg-black"></span> Dal Fry</li>
-                            </ul>
-                        </div>
-                        <div className="p-6 bg-white hover:bg-neo-accent-orange/20 transition-colors">
-                             <div className="flex justify-between items-center mb-4 border-b-2 border-black pb-2">
-                                <h3 className="font-black text-lg uppercase bg-neo-accent-orange inline-block px-1 border-2 border-black shadow-neo-sm">Snacks</h3>
-                                <span className="text-xs font-bold bg-black text-white px-1">17:00 - 18:00</span>
-                            </div>
-                            <ul className="text-sm space-y-3 font-bold">
-                                <li className="flex items-center gap-3"><span className="w-3 h-3 bg-black"></span> Samosa</li>
-                            </ul>
-                        </div>
-                        <div className="p-6 bg-neo-accent-blue/10 relative overflow-hidden">
-                            <div className="absolute inset-0 border-l-4 border-black pointer-events-none md:block hidden"></div>
-                            <div className="absolute -right-8 -top-8 bg-neo-accent-blue w-24 h-24 rotate-45 border-4 border-black z-0"></div>
-                            <div className="flex justify-between items-center mb-4 border-b-2 border-black pb-2 relative z-10">
-                                <h3 className="font-black text-lg uppercase bg-neo-accent-blue inline-block px-1 border-2 border-black shadow-neo-sm text-white">Dinner</h3>
-                                <span className="text-xs font-black bg-black text-white px-2 py-1 animate-pulse">UPCOMING</span>
-                            </div>
-                           <ul className="text-sm space-y-3 font-bold relative z-10">
-                                <li className="flex items-center gap-3"><span className="w-3 h-3 bg-black"></span> Chapati</li>
-                                <li className="flex items-center gap-3"><span className="w-3 h-3 bg-black"></span> Paneer Butter Masala</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                     {/* Request Form */}
-                    <div className="lg:col-span-1 border-4 border-black shadow-[6px_6px_0px_0px_#000] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[8px_8px_0px_0px_#000] transition-all p-0 bg-neo-accent-orange">
-                        <div className="border-b-4 border-black bg-white p-4">
-                            <h2 className="text-xl font-black uppercase flex items-center gap-2">
-                                <span className="material-symbols-outlined font-bold">build</span>
-                                New Complaint
-                            </h2>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* New Complaint Form */}
+                        <div className="lg:col-span-1 border-4 border-black shadow-[6px_6px_0px_0px_#000] bg-neo-accent-orange">
+                            <div className="border-b-4 border-black bg-white p-4">
+                                <h2 className="text-xl font-black uppercase flex items-center gap-2">
+                                    <span className="material-symbols-outlined font-bold">build</span>
+                                    New Complaint
+                                </h2>
+                            </div>
+                            <div className="p-6">
+                                {submitSuccess && (
+                                    <div className="bg-neo-accent-green border-3 border-black p-3 mb-4 font-black text-sm uppercase text-center shadow-neo-sm animate-bounce">
+                                        ✅ Complaint Submitted!
+                                    </div>
+                                )}
+                                <form onSubmit={handleSubmitComplaint} className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-black uppercase mb-1">Room No</label>
+                                        <input
+                                            value={complaintForm.room_no}
+                                            onChange={e => setComplaintForm({ ...complaintForm, room_no: e.target.value })}
+                                            className="w-full bg-white border-3 border-black p-3 text-sm font-bold outline-none shadow-neo-sm focus:shadow-neo transition-shadow"
+                                            placeholder="B-304"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-black uppercase mb-1">Issue Category</label>
+                                        <select
+                                            value={complaintForm.category}
+                                            onChange={e => setComplaintForm({ ...complaintForm, category: e.target.value })}
+                                            className="w-full bg-white border-3 border-black p-3 text-sm focus:outline-none font-bold shadow-neo-sm"
+                                        >
+                                            <option>Electrical</option>
+                                            <option>Plumbing</option>
+                                            <option>Furniture</option>
+                                            <option>Cleaning</option>
+                                            <option>Internet</option>
+                                            <option>Other</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-black uppercase mb-1">Description</label>
+                                        <textarea
+                                            value={complaintForm.description}
+                                            onChange={e => setComplaintForm({ ...complaintForm, description: e.target.value })}
+                                            className="w-full bg-white border-3 border-black p-3 text-sm font-bold outline-none shadow-neo-sm focus:shadow-neo transition-shadow h-20 resize-none"
+                                            placeholder="Describe the issue..."
+                                        />
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        disabled={submitting}
+                                        className="w-full bg-black text-white border-3 border-black shadow-[4px_4px_0px_0px_#000] font-extrabold uppercase py-3 text-sm hover:bg-gray-800 active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0px_0px_#000] transition-all disabled:opacity-50"
+                                    >
+                                        {submitting ? "Submitting..." : "Submit Complaint"}
+                                    </button>
+                                </form>
+                            </div>
                         </div>
-                        <div className="p-6">
-                            <form className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-black uppercase mb-1">Issue Category</label>
-                                    <select className="w-full bg-white border-3 border-black p-3 text-sm focus:outline-none focus:shadow-[5px_5px_0px_0px_#000] font-bold">
-                                        <option>Electrical</option>
-                                        <option>Plumbing</option>
-                                    </select>
-                                </div>
-                                <button className="w-full bg-black text-white border-3 border-black shadow-[4px_4px_0px_0px_#000] font-extrabold uppercase py-3 text-sm hover:bg-gray-800 hover:text-white active:translate-x-[2px] active:translate-y-[2px] transition-all">
-                                    Submit Request
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                    
-                    {/* History Table */}
-                    <div className="lg:col-span-2 border-4 border-black shadow-[6px_6px_0px_0px_#000] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[8px_8px_0px_0px_#000] transition-all p-0">
-                        <div className="border-b-4 border-black bg-white p-4 flex justify-between items-center">
-                            <h2 className="text-xl font-black uppercase flex items-center gap-2">
-                                <span className="material-symbols-outlined font-bold">history</span>
-                                Request History
-                            </h2>
-                            <button className="text-xs font-black underline hover:text-neo-accent-blue uppercase">View All</button>
-                        </div>
-                        <div className="overflow-x-auto p-0">
-                            <table className="w-full text-sm text-left border-collapse">
-                                <thead className="text-xs font-black uppercase bg-gray-100 border-b-4 border-black">
-                                    <tr>
-                                        <th className="px-4 py-4 border-r-2 border-black">Ticket ID</th>
-                                        <th className="px-4 py-4 border-r-2 border-black">Category</th>
-                                        <th className="px-4 py-4 border-r-2 border-black">Date</th>
-                                        <th className="px-4 py-4 border-r-2 border-black">Status</th>
-                                        <th className="px-4 py-4 text-center">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y-2 divide-black font-bold">
-                                    <tr className="hover:bg-neo-accent-yellow/20 transition-colors">
-                                        <td className="px-4 py-4 font-mono border-r-2 border-black">#REQ-2024</td>
-                                        <td className="px-4 py-4 border-r-2 border-black">Plumbing</td>
-                                        <td className="px-4 py-4 border-r-2 border-black">Oct 28, 2023</td>
-                                        <td className="px-4 py-4 border-r-2 border-black">
-                                            <span className="px-2 py-1 text-xs font-black bg-neo-accent-yellow border-2 border-black shadow-neo-sm">
-                                                In Progress
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-4 text-center">
-                                            <button className="hover:text-neo-accent-blue border-2 border-transparent hover:border-black hover:bg-white p-1 rounded-none transition-all"><span className="material-symbols-outlined font-bold text-xl">visibility</span></button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+
+                        {/* Complaint History */}
+                        <div className="lg:col-span-2 border-4 border-black shadow-[6px_6px_0px_0px_#000] bg-white">
+                            <div className="border-b-4 border-black bg-white p-4 flex justify-between items-center">
+                                <h2 className="text-xl font-black uppercase flex items-center gap-2">
+                                    <span className="material-symbols-outlined font-bold">history</span>
+                                    My Complaints
+                                </h2>
+                                <span className="bg-black text-white px-2 py-1 text-xs font-black">{complaints.length} TOTAL</span>
+                            </div>
+                            <div className="overflow-x-auto">
+                                {loading ? (
+                                    <div className="p-8 text-center font-bold text-slate-400">Loading...</div>
+                                ) : complaints.length === 0 ? (
+                                    <div className="p-12 text-center font-bold text-slate-400">No complaints yet. Submit one if you have an issue!</div>
+                                ) : (
+                                    <table className="w-full text-sm text-left border-collapse">
+                                        <thead className="text-xs font-black uppercase bg-gray-100 border-b-4 border-black">
+                                            <tr>
+                                                <th className="px-4 py-4 border-r-2 border-black">Category</th>
+                                                <th className="px-4 py-4 border-r-2 border-black">Room</th>
+                                                <th className="px-4 py-4 border-r-2 border-black">Date</th>
+                                                <th className="px-4 py-4 border-r-2 border-black">Status</th>
+                                                <th className="px-4 py-4">Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y-2 divide-black font-bold">
+                                            {complaints.map((c) => (
+                                                <tr key={c.id} className="hover:bg-neo-accent-yellow/20 transition-colors">
+                                                    <td className="px-4 py-4 border-r-2 border-black font-black">{c.category}</td>
+                                                    <td className="px-4 py-4 font-mono border-r-2 border-black">{c.room_no}</td>
+                                                    <td className="px-4 py-4 border-r-2 border-black">{new Date(c.created_at).toLocaleDateString()}</td>
+                                                    <td className="px-4 py-4 border-r-2 border-black">
+                                                        <span className={`px-2 py-1 text-xs font-black border-2 border-black shadow-neo-sm ${STATUS_BADGE[c.status]}`}>
+                                                            {c.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-4 text-xs max-w-[200px] truncate">{c.description || "—"}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-  );
+    );
 }

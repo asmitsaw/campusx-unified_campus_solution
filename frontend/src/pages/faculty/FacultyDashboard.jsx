@@ -66,11 +66,11 @@ function useLibrarianAlerts() {
 
                 const now = new Date();
                 const fmt = (iso) => {
-                    const diffMs  = now - new Date(iso);
+                    const diffMs = now - new Date(iso);
                     const diffMin = Math.floor(diffMs / 60000);
                     const diffHrs = Math.floor(diffMin / 60);
                     const diffDay = Math.floor(diffHrs / 24);
-                    if (diffMin < 1)  return "Just now";
+                    if (diffMin < 1) return "Just now";
                     if (diffMin < 60) return `${diffMin} min ago`;
                     if (diffHrs < 24) return `${diffHrs} hr${diffHrs > 1 ? "s" : ""} ago`;
                     return `${diffDay} day${diffDay > 1 ? "s" : ""} ago`;
@@ -154,16 +154,21 @@ function useLibrarianStats() {
     return stats;
 }
 
+import WardenDashboard from "./WardenDashboard";
+
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function FacultyDashboard() {
     const { user } = useAuth();
     const role = user?.role || "faculty";
 
-    const librarianStats  = useLibrarianStats();
+    // Delegate to role-specific dashboards
+    if (role === "hostel_warden") return <WardenDashboard />;
+
+    const librarianStats = useLibrarianStats();
     const librarianAlerts = useLibrarianAlerts();
 
     // For librarian use live stats; for all others use static ROLE_STATS
-    const stats    = role === "librarian" ? librarianStats  : (ROLE_STATS[role] || ROLE_STATS.faculty);
+    const stats = role === "librarian" ? librarianStats : (ROLE_STATS[role] || ROLE_STATS.faculty);
     const activity = role === "librarian" ? librarianAlerts : RECENT_ACTIVITY;
 
     return (
@@ -282,9 +287,9 @@ export default function FacultyDashboard() {
                                                 <p className="text-xs font-bold text-slate-400">{item.time}</p>
                                                 {item.status && (
                                                     <span className={`text-[10px] font-black uppercase px-1.5 border border-black
-                                                        ${item.status === 'pending'  ? 'bg-neo-yellow text-black' :
-                                                          item.status === 'approved' ? 'bg-neo-green text-black'  :
-                                                          'bg-neo-red text-white'}`}>
+                                                        ${item.status === 'pending' ? 'bg-neo-yellow text-black' :
+                                                            item.status === 'approved' ? 'bg-neo-green text-black' :
+                                                                'bg-neo-red text-white'}`}>
                                                         {item.status}
                                                     </span>
                                                 )}

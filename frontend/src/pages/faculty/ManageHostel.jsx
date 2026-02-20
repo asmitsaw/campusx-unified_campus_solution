@@ -1,49 +1,198 @@
-import React, { useState } from "react";
-import { Home, Users, AlertTriangle, Utensils, CheckCircle, Clock, Wrench } from "lucide-react";
-
-const ROOMS = [
-    { block: "Cauvery", room: "B-101", student: "Aarav Patel", status: "Occupied" },
-    { block: "Cauvery", room: "B-102", student: "Rahul Kumar", status: "Occupied" },
-    { block: "Cauvery", room: "B-103", student: null, status: "Vacant" },
-    { block: "Godavari", room: "G-201", student: "Priya Sharma", status: "Occupied" },
-    { block: "Godavari", room: "G-202", student: null, status: "Maintenance" },
-    { block: "Godavari", room: "G-203", student: "Sneha Reddy", status: "Occupied" },
-];
-
-const COMPLAINTS = [
-    { id: "#REQ-2024", room: "B-204", category: "Plumbing", student: "Vikram Singh", date: "Feb 18, 2026", status: "In Progress" },
-    { id: "#REQ-2025", room: "G-108", category: "Electrical", student: "Ananya Gupta", date: "Feb 19, 2026", status: "Pending" },
-    { id: "#REQ-2023", room: "B-312", category: "Furniture", student: "Deepak Joshi", date: "Feb 15, 2026", status: "Resolved" },
-];
-
-const MESS_MENU = [
-    { meal: "Breakfast", time: "07:30 - 09:30", items: ["Masala Dosa", "Sambar & Chutney", "Tea/Coffee"], color: "bg-neo-green" },
-    { meal: "Lunch", time: "12:30 - 14:30", items: ["Veg Pulao", "Dal Fry", "Raita", "Roti"], color: "bg-neo-yellow" },
-    { meal: "Snacks", time: "17:00 - 18:00", items: ["Samosa", "Tea"], color: "bg-neo-pink" },
-    { meal: "Dinner", time: "20:00 - 21:30", items: ["Chapati", "Paneer Butter Masala", "Rice"], color: "bg-neo-blue" },
-];
+import React, { useState, useEffect } from "react";
+import { Home, Users, AlertTriangle, Utensils, CheckCircle, Clock, Wrench, Plus, Trash2, X, Edit3, Save } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { apiGet, apiPost, apiDelete } from "../../utils/api";
 
 const STATUS_COLORS = {
     Occupied: "bg-neo-green",
     Vacant: "bg-neo-blue",
     Maintenance: "bg-neo-yellow",
     "In Progress": "bg-neo-yellow",
-    Pending: "bg-neo-red",
+    Pending: "bg-neo-red text-white",
     Resolved: "bg-neo-green",
 };
 
+const MEAL_COLORS = {
+    Breakfast: "bg-neo-green",
+    Lunch: "bg-neo-yellow",
+    Snacks: "bg-neo-pink",
+    Dinner: "bg-neo-blue",
+};
+
 export default function ManageHostel() {
+    const { user } = useAuth();
     const [tab, setTab] = useState("rooms");
+
+    // Rooms
+    const [rooms, setRooms] = useState([]);
+    const [loadingRooms, setLoadingRooms] = useState(true);
+    const [showAddRoom, setShowAddRoom] = useState(false);
+    const [roomForm, setRoomForm] = useState({ block: "Cauvery", room_no: "", capacity: 1 });
+
+    // Complaints
+    const [complaints, setComplaints] = useState([]);
+    const [loadingComplaints, setLoadingComplaints] = useState(true);
+
+    // Mess
+    const [messMenu, setMessMenu] = useState([]);
+    const [loadingMess, setLoadingMess] = useState(true);
+    const [editingMess, setEditingMess] = useState(false);
+    const [editedMeals, setEditedMeals] = useState([]);
+    const [selectedDay, setSelectedDay] = useState("Monday");
+    const [savingMess, setSavingMess] = useState(false);
+
+    useEffect(() => {
+        fetchRooms();
+        fetchComplaints();
+        fetchMess();
+    }, []);
+
+    useEffect(() => {
+        fetchMess();
+    }, [selectedDay]);
+
+    // ---- Fetch ----
+    const fetchRooms = async () => {
+        setLoadingRooms(true);
+        try {
+            const res = await apiGet("/hostel/rooms");
+            setRooms(res.data);
+        } catch (e) { console.error(e); }
+        setLoadingRooms(false);
+    };
+
+    const fetchComplaints = async () => {
+        setLoadingComplaints(true);
+        try {
+            const res = await apiGet("/hostel/complaints");
+            setComplaints(res.data);
+        } catch (e) { console.error(e); }
+        setLoadingComplaints(false);
+    };
+
+    const fetchMess = async () => {
+        setLoadingMess(true);
+        try {
+            const res = await apiGet(`/hostel/mess?day=${selectedDay}`);
+            setMessMenu(res.data);
+            setEditedMeals(res.data.map(m => ({ ...m, items: [...m.items] })));
+        } catch (e) { console.error(e); }
+        setLoadingMess(false);
+    };
+
+    // ---- Room actions ----
+    const handleAddRoom = async () => {
+        if (!roomForm.room_no) return alert("Room number required");
+        try {
+            await apiPost("/hostel/rooms", roomForm);
+            setShowAddRoom(false);
+            setRoomForm({ block: "Cauvery", room_no: "", capacity: 1 });
+            fetchRooms();
+        } catch (e) { alert(e.message); }
+    };
+
+    const handleDeleteRoom = async (id) => {
+        if (!confirm("Delete this room?")) return;
+        try {
+            await apiDelete(`/hostel/rooms/${id}`);
+            fetchRooms();
+        } catch (e) { alert(e.message); }
+    };
+
+    const handleAllocateRoom = async (room) => {
+        const name = prompt("Enter student name to allocate:");
+        if (!name) return;
+        try {
+            const res = await fetch(`http://localhost:5000/api/hostel/rooms/${room.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("campusx_token")}` },
+                body: JSON.stringify({ student_name: name, status: "Occupied" }),
+            });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message);
+            fetchRooms();
+        } catch (e) { alert(e.message); }
+    };
+
+    const handleVacateRoom = async (room) => {
+        if (!confirm(`Vacate ${room.room_no}?`)) return;
+        try {
+            const res = await fetch(`http://localhost:5000/api/hostel/rooms/${room.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("campusx_token")}` },
+                body: JSON.stringify({ student_name: null, student_id: null, status: "Vacant" }),
+            });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message);
+            fetchRooms();
+        } catch (e) { alert(e.message); }
+    };
+
+    // ---- Complaint actions ----
+    const handleUpdateComplaint = async (id, status) => {
+        try {
+            const res = await fetch(`http://localhost:5000/api/hostel/complaints/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("campusx_token")}` },
+                body: JSON.stringify({ status }),
+            });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message);
+            fetchComplaints();
+        } catch (e) { alert(e.message); }
+    };
+
+    // ---- Mess actions ----
+    const handleUpdateMessItem = (mealIdx, itemIdx, value) => {
+        const updated = [...editedMeals];
+        updated[mealIdx].items[itemIdx] = value;
+        setEditedMeals(updated);
+    };
+
+    const handleAddMessItem = (mealIdx) => {
+        const updated = [...editedMeals];
+        updated[mealIdx].items.push("");
+        setEditedMeals(updated);
+    };
+
+    const handleRemoveMessItem = (mealIdx, itemIdx) => {
+        const updated = [...editedMeals];
+        updated[mealIdx].items.splice(itemIdx, 1);
+        setEditedMeals(updated);
+    };
+
+    const handleSaveMess = async () => {
+        setSavingMess(true);
+        try {
+            const meals = editedMeals.map(m => ({
+                meal: m.meal,
+                time_slot: m.time_slot,
+                items: m.items.filter(i => i.trim()),
+                day_of_week: selectedDay,
+            }));
+            const res = await fetch("http://localhost:5000/api/hostel/mess", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("campusx_token")}` },
+                body: JSON.stringify({ meals }),
+            });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message);
+            setEditingMess(false);
+            fetchMess();
+        } catch (e) { alert(e.message); }
+        setSavingMess(false);
+    };
+
+    const occupied = rooms.filter(r => r.status === "Occupied").length;
+    const vacant = rooms.filter(r => r.status === "Vacant").length;
+    const openComplaints = complaints.filter(c => c.status !== "Resolved").length;
 
     return (
         <div className="font-display bg-neo-bg text-neo-black min-h-screen p-6 -m-6">
             <div className="flex flex-col gap-8 mx-auto max-w-[1600px]">
                 {/* Header */}
                 <div className="flex items-center justify-between">
-                    <h1
-                        className="text-4xl font-black uppercase italic tracking-tighter"
-                        style={{ textShadow: "2px 2px 0px #fbef23" }}
-                    >
+                    <h1 className="text-4xl font-black uppercase italic tracking-tighter" style={{ textShadow: "2px 2px 0px #fbef23" }}>
                         Manage Hostel
                     </h1>
                 </div>
@@ -52,21 +201,19 @@ export default function ManageHostel() {
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
                     <div className="bg-neo-blue border-3 border-black p-5 shadow-neo hover:-translate-y-1 transition-transform">
                         <p className="text-xs font-black uppercase text-black/70 mb-1">Total Rooms</p>
-                        <p className="text-3xl font-black">{ROOMS.length}</p>
+                        <p className="text-3xl font-black">{rooms.length}</p>
                     </div>
                     <div className="bg-neo-green border-3 border-black p-5 shadow-neo hover:-translate-y-1 transition-transform">
                         <p className="text-xs font-black uppercase text-black/70 mb-1">Occupied</p>
-                        <p className="text-3xl font-black">{ROOMS.filter((r) => r.status === "Occupied").length}</p>
+                        <p className="text-3xl font-black">{occupied}</p>
                     </div>
                     <div className="bg-neo-yellow border-3 border-black p-5 shadow-neo hover:-translate-y-1 transition-transform">
                         <p className="text-xs font-black uppercase text-black/70 mb-1">Vacant</p>
-                        <p className="text-3xl font-black">{ROOMS.filter((r) => r.status === "Vacant").length}</p>
+                        <p className="text-3xl font-black">{vacant}</p>
                     </div>
                     <div className="bg-neo-red border-3 border-black p-5 shadow-neo hover:-translate-y-1 transition-transform">
                         <p className="text-xs font-black uppercase text-white/90 mb-1">Open Complaints</p>
-                        <p className="text-3xl font-black text-white" style={{ textShadow: "2px 2px 0px #000" }}>
-                            {COMPLAINTS.filter((c) => c.status !== "Resolved").length}
-                        </p>
+                        <p className="text-3xl font-black text-white" style={{ textShadow: "2px 2px 0px #000" }}>{openComplaints}</p>
                     </div>
                 </div>
 
@@ -80,128 +227,200 @@ export default function ManageHostel() {
                         <button
                             key={t.key}
                             onClick={() => setTab(t.key)}
-                            className={`flex items-center gap-2 px-6 py-3 border-3 border-black font-black uppercase text-sm shadow-neo-sm transition-all ${tab === t.key
-                                    ? "bg-black text-white translate-x-[2px] translate-y-[2px] shadow-none"
-                                    : "bg-white hover:-translate-y-1 hover:shadow-neo"
-                                }`}
+                            className={`flex items-center gap-2 px-6 py-3 border-3 border-black font-black uppercase text-sm shadow-neo-sm transition-all ${tab === t.key ? "bg-black text-white translate-x-[2px] translate-y-[2px] shadow-none" : "bg-white hover:-translate-y-1 hover:shadow-neo"}`}
                         >
                             <t.icon className="w-4 h-4" /> {t.label}
                         </button>
                     ))}
                 </div>
 
-                {/* Rooms Tab */}
+                {/* ==================== ROOMS TAB ==================== */}
                 {tab === "rooms" && (
-                    <div className="bg-white border-3 border-black shadow-neo">
-                        <div className="px-6 py-4 border-b-3 border-black bg-neo-blue">
-                            <h3 className="text-xl font-black text-black uppercase italic flex items-center gap-2">
-                                <Home className="w-5 h-5" /> Room Allocation
-                            </h3>
+                    <div className="space-y-6">
+                        <div className="flex justify-end">
+                            <button onClick={() => setShowAddRoom(true)} className="bg-neo-green text-black border-3 border-black px-6 py-3 font-black uppercase shadow-neo-sm hover:-translate-y-1 hover:shadow-neo transition-all flex items-center gap-2">
+                                <Plus className="w-5 h-5" /> Add Room
+                            </button>
                         </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead className="bg-black text-white text-xs uppercase font-bold">
-                                    <tr>
-                                        <th className="px-6 py-3">Block</th>
-                                        <th className="px-6 py-3 border-l-2 border-white/20">Room</th>
-                                        <th className="px-6 py-3 border-l-2 border-white/20">Student</th>
-                                        <th className="px-6 py-3 border-l-2 border-white/20 text-center">Status</th>
-                                        <th className="px-6 py-3 border-l-2 border-white/20 text-right">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y-2 divide-black">
-                                    {ROOMS.map((room, i) => (
-                                        <tr key={i} className="hover:bg-neo-bg transition-colors">
-                                            <td className="px-6 py-4 font-black">{room.block}</td>
-                                            <td className="px-6 py-4 font-mono font-bold">{room.room}</td>
-                                            <td className="px-6 py-4 font-bold">{room.student || "—"}</td>
-                                            <td className="px-6 py-4 text-center">
-                                                <span className={`inline-flex items-center border-2 border-black px-3 py-1 text-xs font-black uppercase shadow-neo-sm ${STATUS_COLORS[room.status]}`}>
-                                                    {room.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <button className="border-2 border-black bg-white px-3 py-1 text-sm font-bold hover:bg-neo-blue transition-colors shadow-neo-sm active:shadow-none active:translate-y-[2px]">
-                                                    {room.status === "Vacant" ? "Allocate" : "Details"}
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+
+                        {showAddRoom && (
+                            <div className="bg-white border-3 border-black shadow-neo p-6 relative">
+                                <button onClick={() => setShowAddRoom(false)} className="absolute top-4 right-4 border-2 border-black p-1 hover:bg-neo-red hover:text-white transition-colors"><X className="w-5 h-5" /></button>
+                                <h3 className="text-xl font-black uppercase mb-4">Add Room</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-black uppercase mb-1">Block</label>
+                                        <select value={roomForm.block} onChange={e => setRoomForm({ ...roomForm, block: e.target.value })} className="w-full border-2 border-black p-3 font-bold shadow-neo-sm bg-white">
+                                            <option>Cauvery</option><option>Godavari</option><option>Narmada</option><option>Krishna</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-black uppercase mb-1">Room No</label>
+                                        <input value={roomForm.room_no} onChange={e => setRoomForm({ ...roomForm, room_no: e.target.value })} className="w-full border-2 border-black p-3 font-bold shadow-neo-sm outline-none" placeholder="B-101" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-black uppercase mb-1">Capacity</label>
+                                        <input type="number" min={1} max={4} value={roomForm.capacity} onChange={e => setRoomForm({ ...roomForm, capacity: parseInt(e.target.value) || 1 })} className="w-full border-2 border-black p-3 font-bold shadow-neo-sm outline-none" />
+                                    </div>
+                                </div>
+                                <button onClick={handleAddRoom} className="mt-4 bg-black text-white border-3 border-black px-8 py-3 font-black uppercase shadow-neo-sm hover:bg-neo-green hover:text-black transition-colors active:shadow-none active:translate-y-[2px]">Add Room</button>
+                            </div>
+                        )}
+
+                        <div className="bg-white border-3 border-black shadow-neo">
+                            <div className="px-6 py-4 border-b-3 border-black bg-neo-blue">
+                                <h3 className="text-xl font-black text-black uppercase italic flex items-center gap-2"><Home className="w-5 h-5" /> Room Allocation</h3>
+                            </div>
+                            {loadingRooms ? <div className="p-8 text-center font-bold text-slate-400">Loading...</div> : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead className="bg-black text-white text-xs uppercase font-bold">
+                                            <tr>
+                                                <th className="px-6 py-3">Block</th>
+                                                <th className="px-6 py-3 border-l-2 border-white/20">Room</th>
+                                                <th className="px-6 py-3 border-l-2 border-white/20">Student</th>
+                                                <th className="px-6 py-3 border-l-2 border-white/20">Capacity</th>
+                                                <th className="px-6 py-3 border-l-2 border-white/20 text-center">Status</th>
+                                                <th className="px-6 py-3 border-l-2 border-white/20 text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y-2 divide-black">
+                                            {rooms.map((room) => (
+                                                <tr key={room.id} className="hover:bg-neo-bg transition-colors">
+                                                    <td className="px-6 py-4 font-black">{room.block}</td>
+                                                    <td className="px-6 py-4 font-mono font-bold">{room.room_no}</td>
+                                                    <td className="px-6 py-4 font-bold">{room.student_name || "—"}</td>
+                                                    <td className="px-6 py-4 font-bold">{room.capacity}</td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <span className={`inline-flex items-center border-2 border-black px-3 py-1 text-xs font-black uppercase shadow-neo-sm ${STATUS_COLORS[room.status]}`}>{room.status}</span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right flex gap-2 justify-end">
+                                                        {room.status === "Vacant" && (
+                                                            <button onClick={() => handleAllocateRoom(room)} className="border-2 border-black bg-neo-green px-3 py-1 text-sm font-bold shadow-neo-sm active:shadow-none active:translate-y-[2px] transition-all">Allocate</button>
+                                                        )}
+                                                        {room.status === "Occupied" && (
+                                                            <button onClick={() => handleVacateRoom(room)} className="border-2 border-black bg-neo-yellow px-3 py-1 text-sm font-bold shadow-neo-sm active:shadow-none active:translate-y-[2px] transition-all">Vacate</button>
+                                                        )}
+                                                        <button onClick={() => handleDeleteRoom(room.id)} className="border-2 border-black bg-white p-1 hover:bg-neo-red hover:text-white transition-colors shadow-neo-sm active:shadow-none active:translate-y-[2px]">
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {rooms.length === 0 && (
+                                                <tr><td colSpan={6} className="px-6 py-12 text-center font-bold text-slate-400">No rooms added yet</td></tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
 
-                {/* Complaints Tab */}
+                {/* ==================== COMPLAINTS TAB ==================== */}
                 {tab === "complaints" && (
                     <div className="bg-white border-3 border-black shadow-neo">
                         <div className="px-6 py-4 border-b-3 border-black bg-neo-red">
                             <h3 className="text-xl font-black text-white uppercase italic flex items-center gap-2">
-                                <AlertTriangle className="w-5 h-5" /> Complaints
+                                <AlertTriangle className="w-5 h-5" /> Complaints ({complaints.length})
                             </h3>
                         </div>
-                        <div className="divide-y-2 divide-black">
-                            {COMPLAINTS.map((c, i) => (
-                                <div key={i} className="px-6 py-5 hover:bg-neo-bg transition-colors flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 bg-neo-purple border-2 border-black flex items-center justify-center text-white">
-                                            <Wrench className="w-5 h-5" />
+                        {loadingComplaints ? <div className="p-8 text-center font-bold text-slate-400">Loading...</div> : complaints.length === 0 ? (
+                            <div className="p-12 text-center">
+                                <CheckCircle className="w-12 h-12 mx-auto mb-4 text-neo-green" />
+                                <p className="text-lg font-black text-slate-400 uppercase">No complaints! 🎉</p>
+                            </div>
+                        ) : (
+                            <div className="divide-y-2 divide-black">
+                                {complaints.map((c) => (
+                                    <div key={c.id} className="px-6 py-5 hover:bg-neo-bg transition-colors flex items-center justify-between gap-4">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-neo-purple border-2 border-black flex items-center justify-center text-white shrink-0">
+                                                <Wrench className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className="font-black">{c.category} — <span className="font-mono">{c.room_no}</span></p>
+                                                <p className="text-sm font-bold text-slate-500">{c.student_name} · {new Date(c.created_at).toLocaleDateString()}</p>
+                                                {c.description && <p className="text-xs text-slate-400 mt-1">{c.description}</p>}
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="font-black">{c.category} — <span className="font-mono">{c.room}</span></p>
-                                            <p className="text-sm font-bold text-slate-500">{c.student} · {c.date}</p>
-                                            <p className="text-xs font-mono font-bold text-slate-400">{c.id}</p>
+                                        <div className="flex items-center gap-3 shrink-0">
+                                            <span className={`border-2 border-black px-3 py-1 text-xs font-black uppercase shadow-neo-sm ${STATUS_COLORS[c.status]}`}>{c.status}</span>
+                                            {c.status === "Pending" && (
+                                                <button onClick={() => handleUpdateComplaint(c.id, "In Progress")} className="border-2 border-black bg-neo-yellow px-3 py-1 text-sm font-bold shadow-neo-sm active:shadow-none active:translate-y-[2px] transition-all">
+                                                    <Clock className="w-4 h-4 inline mr-1" /> In Progress
+                                                </button>
+                                            )}
+                                            {c.status !== "Resolved" && (
+                                                <button onClick={() => handleUpdateComplaint(c.id, "Resolved")} className="border-2 border-black bg-neo-green px-3 py-1 text-sm font-bold shadow-neo-sm active:shadow-none active:translate-y-[2px] transition-all">
+                                                    <CheckCircle className="w-4 h-4 inline mr-1" /> Resolve
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className={`border-2 border-black px-3 py-1 text-xs font-black uppercase shadow-neo-sm ${STATUS_COLORS[c.status]} ${c.status === "Pending" ? "text-white" : ""}`}>
-                                            {c.status}
-                                        </span>
-                                        {c.status !== "Resolved" && (
-                                            <button className="border-2 border-black bg-neo-green px-4 py-1 text-sm font-bold shadow-neo-sm active:shadow-none active:translate-y-[2px] transition-all">
-                                                <CheckCircle className="w-4 h-4 inline mr-1" /> Resolve
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
 
-                {/* Mess Menu Tab */}
+                {/* ==================== MESS MENU TAB ==================== */}
                 {tab === "mess" && (
                     <div className="bg-white border-3 border-black shadow-neo">
-                        <div className="px-6 py-4 border-b-3 border-black bg-neo-yellow">
+                        <div className="px-6 py-4 border-b-3 border-black bg-neo-yellow flex items-center justify-between">
                             <h3 className="text-xl font-black text-black uppercase italic flex items-center gap-2">
-                                <Utensils className="w-5 h-5" /> Weekly Mess Menu
+                                <Utensils className="w-5 h-5" /> Mess Menu
                             </h3>
+                            <div className="flex items-center gap-3">
+                                <select value={selectedDay} onChange={e => setSelectedDay(e.target.value)} className="border-2 border-black bg-white px-3 py-2 font-bold text-sm shadow-neo-sm">
+                                    {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(d => <option key={d}>{d}</option>)}
+                                </select>
+                                {!editingMess ? (
+                                    <button onClick={() => setEditingMess(true)} className="flex items-center gap-1 bg-black text-white border-2 border-black px-4 py-2 font-bold text-sm uppercase shadow-neo-sm active:shadow-none active:translate-y-[2px] transition-all">
+                                        <Edit3 className="w-4 h-4" /> Edit
+                                    </button>
+                                ) : (
+                                    <button onClick={handleSaveMess} disabled={savingMess} className="flex items-center gap-1 bg-neo-green border-2 border-black px-4 py-2 font-bold text-sm uppercase shadow-neo-sm active:shadow-none active:translate-y-[2px] transition-all disabled:opacity-50">
+                                        <Save className="w-4 h-4" /> {savingMess ? "Saving..." : "Save"}
+                                    </button>
+                                )}
+                            </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y-2 md:divide-y-0 md:divide-x-2 divide-black">
-                            {MESS_MENU.map((meal, i) => (
-                                <div key={i} className="p-6 hover:bg-neo-bg transition-colors">
-                                    <div className="flex justify-between items-center mb-4 border-b-2 border-black pb-2">
-                                        <h4 className={`font-black text-lg uppercase ${meal.color} inline-block px-2 border-2 border-black shadow-neo-sm`}>
-                                            {meal.meal}
-                                        </h4>
-                                        <span className="text-xs font-bold bg-black text-white px-1">{meal.time}</span>
+
+                        {loadingMess ? <div className="p-8 text-center font-bold text-slate-400">Loading...</div> : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y-2 md:divide-y-0 md:divide-x-2 divide-black">
+                                {(editingMess ? editedMeals : messMenu).map((meal, i) => (
+                                    <div key={meal.meal || i} className="p-6 hover:bg-neo-bg transition-colors">
+                                        <div className="flex justify-between items-center mb-4 border-b-2 border-black pb-2">
+                                            <h4 className={`font-black text-lg uppercase ${MEAL_COLORS[meal.meal] || "bg-neo-blue"} inline-block px-2 border-2 border-black shadow-neo-sm`}>{meal.meal}</h4>
+                                            <span className="text-xs font-bold bg-black text-white px-1">{meal.time_slot}</span>
+                                        </div>
+                                        {editingMess ? (
+                                            <div className="space-y-2">
+                                                {meal.items.map((item, j) => (
+                                                    <div key={j} className="flex gap-2">
+                                                        <input value={item} onChange={e => handleUpdateMessItem(i, j, e.target.value)} className="flex-1 border border-black p-1.5 text-sm font-bold outline-none" />
+                                                        <button onClick={() => handleRemoveMessItem(i, j)} className="border border-black p-1 hover:bg-neo-red hover:text-white transition-colors"><X className="w-3 h-3" /></button>
+                                                    </div>
+                                                ))}
+                                                <button onClick={() => handleAddMessItem(i)} className="text-xs font-bold border border-dashed border-black px-2 py-1 hover:bg-neo-bg transition-colors">+ Add Item</button>
+                                            </div>
+                                        ) : (
+                                            <ul className="text-sm space-y-3 font-bold">
+                                                {meal.items.map((item, j) => (
+                                                    <li key={j} className="flex items-center gap-3"><span className="w-3 h-3 bg-black" /> {item}</li>
+                                                ))}
+                                                {meal.items.length === 0 && <li className="text-slate-400 italic">No items set</li>}
+                                            </ul>
+                                        )}
                                     </div>
-                                    <ul className="text-sm space-y-3 font-bold">
-                                        {meal.items.map((item, j) => (
-                                            <li key={j} className="flex items-center gap-3">
-                                                <span className="w-3 h-3 bg-black" /> {item}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="px-6 py-4 border-t-3 border-black bg-neo-bg">
-                            <button className="bg-black text-white border-3 border-black px-6 py-3 font-black uppercase shadow-neo-sm hover:bg-neo-purple active:shadow-none active:translate-y-[2px] transition-all">
-                                Edit Menu
-                            </button>
-                        </div>
+                                ))}
+                                {messMenu.length === 0 && !editingMess && (
+                                    <div className="col-span-4 p-12 text-center font-bold text-slate-400">No menu set for {selectedDay}. Click Edit to add.</div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
