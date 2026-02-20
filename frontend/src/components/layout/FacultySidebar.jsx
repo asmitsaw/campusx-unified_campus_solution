@@ -62,9 +62,9 @@ const ALL_NAV_ITEMS = [
         roles: ["faculty", "admin"],
     },
     {
-        name: "Manage Events",
+        name: "Event Dashboard",
         href: "/faculty/events",
-        icon: Verified,
+        icon: Calendar,
         roles: ["event_manager", "admin"],
     },
     {

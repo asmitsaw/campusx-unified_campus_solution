@@ -150,6 +150,56 @@ function useTpoData() {
     return { tpoStats, todaySessions, activity, loading, errors };
 }
 
+// ── Event Manager: live stats, schedule & activity ─────────────────────────
+function useEventManagerData() {
+    const [stats, setStats] = useState(null);
+    const [schedule, setSchedule] = useState([]);
+    const [activity, setActivity] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const [statsRes, schedRes, actRes] = await Promise.all([
+                    fetch("http://localhost:5055/api/ev-events/stats"),
+                    fetch("http://localhost:5055/api/ev-events/schedule"),
+                    fetch("http://localhost:5055/api/ev-events/activity")
+                ]);
+                
+                if (statsRes.ok) {
+                    const d = await statsRes.json();
+                    setStats([
+                        { label: "Active Events", value: String(d.active), icon: Calendar, color: "bg-neo-purple" },
+                        { label: "Registrations", value: String(d.registrations), icon: Users, color: "bg-neo-blue" },
+                        { label: "Upcoming", value: String(d.upcoming), icon: Clock, color: "bg-neo-green" },
+                        { label: "Completed", value: String(d.completed), icon: CheckCircle, color: "bg-neo-yellow" },
+                    ]);
+                }
+                if (schedRes.ok) {
+                    const d = await schedRes.json();
+                    setSchedule(d.map(ev => ({
+                        time: ev.time_start,
+                        title: ev.title,
+                        location: ev.venue,
+                        type: ev.category
+                    })));
+                }
+                if (actRes.ok) {
+                    const d = await actRes.json();
+                    setActivity(d.map(item => ({
+                        text: item.text,
+                        time: timeAgo(item.time),
+                        status: item.status,
+                        color: "bg-neo-blue"
+                    })));
+                }
+            } catch { } finally { setLoading(false); }
+        };
+        load();
+    }, []);
+    return { stats, schedule, activity, loading };
+}
+
 // ── Faculty hook ──────────────────────────────────────────────────────────────
 function useFacultyData(selectedDate) {
     const [schedule, setSchedule] = useState([]);
@@ -281,14 +331,18 @@ export default function FacultyDashboard() {
     const librarianAlerts = useLibrarianAlerts();
     const { tpoStats, todaySessions, activity: tpoActivity, loading: tpoLoading, errors: tpoErrors } = useTpoData();
     const { schedule: facultySchedule, monthDates, recentActivity, stats: facStats, loading: facLoading } = useFacultyData(selectedDate);
+    const { stats: evStats, schedule: evSchedule, activity: evActivity, loading: evLoading } = useEventManagerData();
 
     const isFaculty = role === "faculty";
     const isTPO = role === "tpo";
+    const isEM = role === "event_manager";
 
     // ── Build stats ────────────────────────────────────────────────────────────
     let stats;
     if (role === "librarian") {
         stats = librarianStats;
+    } else if (isEM) {
+        stats = evStats || ROLE_STATS_STATIC.event_manager;
     } else if (isTPO) {
         stats = [
             { label: "Companies Visiting", value: tpoLoading ? "…" : String(tpoStats?.companies_visiting ?? "–"), icon: Building2, color: "bg-neo-purple" },
@@ -311,6 +365,8 @@ export default function FacultyDashboard() {
     let activityFeed = [];
     if (role === "librarian") {
         activityFeed = librarianAlerts;
+    } else if (isEM) {
+        activityFeed = evActivity;
     } else if (isTPO) {
         activityFeed = tpoActivity;
     } else if (isFaculty) {
@@ -448,8 +504,8 @@ export default function FacultyDashboard() {
                         </>
                     )}
 
-                    {/* ── TPO: Today's training sessions ── */}
-                    {isTPO && (
+                    {/* ── TPO & Event Manager: Today's schedule ── */}
+                    {(isTPO || isEM) && (
                         <div className="lg:col-span-2 bg-white border-3 border-black shadow-neo">
                             <div className="flex items-center justify-between px-6 py-4 border-b-3 border-black bg-neo-blue">
                                 <div className="flex items-center gap-3">
@@ -458,30 +514,34 @@ export default function FacultyDashboard() {
                                     </div>
                                     <h3 className="text-xl font-black text-black uppercase italic">Today's Schedule</h3>
                                 </div>
-                                <span className="text-xs font-black border-2 border-black bg-white px-3 py-1 shadow-neo-sm uppercase">Training Sessions</span>
+                                <span className="text-xs font-black border-2 border-black bg-white px-3 py-1 shadow-neo-sm uppercase">
+                                    {isTPO ? "Training Sessions" : "Events"}
+                                </span>
                             </div>
-                            {tpoLoading ? (
+                            {(tpoLoading || evLoading) ? (
                                 <div className="flex items-center justify-center py-12">
                                     <Loader2 className="w-5 h-5 animate-spin mr-2" />
                                     <span className="font-bold text-sm text-gray-500">Loading...</span>
                                 </div>
-                            ) : todaySessions.length === 0 ? (
+                            ) : (isTPO ? todaySessions : evSchedule).length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-400">
                                     <Calendar className="w-10 h-10 opacity-20" />
-                                    <p className="font-black uppercase text-sm">No training sessions today</p>
-                                    <p className="text-xs font-bold">Post a session from Manage Placements → Post Training</p>
+                                    <p className="font-black uppercase text-sm">No {isTPO ? "training sessions" : "events"} today</p>
+                                    <p className="text-xs font-bold">{isTPO ? "Post a session from Manage Placements" : "Create an event from Event Dashboard"}</p>
                                 </div>
                             ) : (
                                 <div className="divide-y-2 divide-black">
-                                    {todaySessions.map((item, i) => (
+                                    {(isTPO ? todaySessions : evSchedule).map((item, i) => (
                                         <div key={i} className="flex items-center gap-6 px-6 py-5 hover:bg-neo-bg transition-colors group">
                                             <div className="bg-black text-white px-3 py-2 border-2 border-black font-mono font-black text-sm min-w-[100px] text-center shadow-neo-sm group-hover:-translate-y-[2px] transition-transform">
-                                                {item.time ? formatTime(item.time) : "TBD"}
+                                                {isTPO 
+                                                    ? (item.time ? formatTime(item.time) : "TBD")
+                                                    : formatTime(item.time)}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-black text-lg leading-tight truncate">{item.title}</p>
                                                 <div className="flex items-center gap-2 mt-0.5">
-                                                    <p className="text-sm font-bold text-slate-500">📍 {item.venue || "—"}</p>
+                                                    <p className="text-sm font-bold text-slate-500">📍 {isTPO ? (item.venue || "—") : item.location}</p>
                                                     {item.type && <span className="text-[10px] font-black uppercase border border-black bg-neo-cyan px-1.5">{item.type}</span>}
                                                 </div>
                                             </div>
@@ -494,7 +554,7 @@ export default function FacultyDashboard() {
                     )}
 
                     {/* ── OTHER roles: Static schedule placeholder ── */}
-                    {!isFaculty && !isTPO && (
+                    {!isFaculty && !isTPO && !isEM && (
                         <div className="lg:col-span-2 bg-white border-3 border-black shadow-neo">
                             <div className="flex items-center gap-3 px-6 py-4 border-b-3 border-black bg-neo-blue">
                                 <div className="bg-black text-white p-1 border-2 border-white"><Calendar className="w-5 h-5" /></div>
