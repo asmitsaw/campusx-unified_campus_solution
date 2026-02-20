@@ -12,6 +12,7 @@ import libraryRoutes from "./routes/lib_routes.js";
 import batchRoutes from "./routes/batchroutes.js";
 import classRoutes from "./routes/classroutes.js";
 import hostelRoutes from "./routes/hostelroutes.js";
+import notificationRoutes from "./routes/notificationroutes.js";
 import evRoutes from "./routes/ev_routes.js";
 
 dotenv.config();
@@ -33,13 +34,14 @@ app.use("/api/hostel", hostelRoutes);
 
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/materials", materialRoutes);
+app.use("/api/notifications", notificationRoutes);
 app.use("/api/ev-events", evRoutes);
 
 app.get("/", (req, res) => {
   res.send("🚀 API Running with Supabase - EV1 VERSION");
 });
 
-const PORT = 5055; // Port 5055 to bypass all ghost processes
+const PORT = 5000; // Port 5055 to bypass all ghost processes
 
 const server = app.listen(PORT, () => {
   console.log(`🔥 EVENT SYSTEM (v3) ON PORT ${PORT}`);

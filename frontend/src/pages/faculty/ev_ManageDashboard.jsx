@@ -5,8 +5,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-const API = "http://localhost:5055/api/ev-events";
-const STATIC = "http://localhost:5055";
+const API = "http://localhost:5000/api/ev-events";
+const STATIC = "http://localhost:5000";
 
 const CATEGORIES = ["Technical", "Cultural", "Placement", "Workshop", "Sports", "Seminar"];
 

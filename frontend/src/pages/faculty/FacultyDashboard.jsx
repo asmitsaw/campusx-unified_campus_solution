@@ -161,9 +161,9 @@ function useEventManagerData() {
         const load = async () => {
             try {
                 const [statsRes, schedRes, actRes] = await Promise.all([
-                    fetch("http://localhost:5055/api/ev-events/stats"),
-                    fetch("http://localhost:5055/api/ev-events/schedule"),
-                    fetch("http://localhost:5055/api/ev-events/activity")
+                    fetch("http://localhost:5000/api/ev-events/stats"),
+                    fetch("http://localhost:5000/api/ev-events/schedule"),
+                    fetch("http://localhost:5000/api/ev-events/activity")
                 ]);
                 
                 if (statsRes.ok) {

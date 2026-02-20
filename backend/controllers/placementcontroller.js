@@ -27,6 +27,34 @@ export const createDrive = async (req, res) => {
       await supabase.from("training_sessions").insert(sessions);
     }
 
+    // --- Bulk Insert Notifications for Students ---
+    try {
+      // 1. Fetch all student users
+      const { data: students, error: studentError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("role", "student");
+
+      if (!studentError && students && students.length > 0) {
+        // 2. Prepare notification payload
+        const notifications = students.map(student => ({
+          user_id: student.id,
+          title: "New Placement Drive",
+          message: `${company} is hiring for ${role}. Package: ${package_lpa} LPA. Deadline: ${deadline}.`,
+          type: "placement",
+          link: `/dashboard/placement`, // Route where students view placements
+        }));
+
+        // 3. Insert into notifications table
+        await supabase.from("notifications").insert(notifications);
+        console.log(`Inserted notifications for ${students.length} students.`);
+      } else {
+        console.error("No students found or error fetching students for notifications");
+      }
+    } catch (notifErr) {
+      console.error("Failed to insert database notifications:", notifErr.message);
+    }
+
     // --- Send Email Notification ---
     try {
       const transporter = nodemailer.createTransport({

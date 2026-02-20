@@ -182,6 +182,34 @@ export const markAttendance = async (req, res) => {
 
     if (error) throw error;
 
+    // --- Send Notifications for Absent Students ---
+    try {
+      const absentRecords = upsertData.filter(r => r.status === "absent");
+      if (absentRecords.length > 0) {
+        // Fetch schedule details for the message
+        const { data: schedData } = await supabase
+          .from("faculty_schedule")
+          .select("subject, date, type")
+          .eq("id", schedule_id)
+          .single();
+
+        const subjectName = schedData?.subject || "Unknown Subject";
+        const dateStr = schedData?.date || new Date().toISOString().split("T")[0];
+
+        const notifications = absentRecords.map(r => ({
+          user_id: r.student_id,
+          title: "Attendance Alert",
+          message: `You have been marked Absent for ${subjectName} (${schedData?.type || 'Class'}) on ${dateStr}.`,
+          type: "system",
+          link: "/dashboard/attendance",
+        }));
+
+        await supabase.from("notifications").insert(notifications);
+      }
+    } catch (notifErr) {
+      console.error("Failed to insert absent notifications:", notifErr.message);
+    }
+
     res.json({
       success: true,
       data,

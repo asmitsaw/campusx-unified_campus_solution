@@ -166,6 +166,22 @@ export const updateComplaintStatus = async (req, res) => {
             .select()
             .single();
         if (error) throw error;
+
+        // --- Notify Student of Status Update ---
+        try {
+            if (data && data.student_id) {
+                await supabase.from("notifications").insert([{
+                    user_id: data.student_id,
+                    title: "Hostel Complaint Updated",
+                    message: `Your complaint regarding ${data.category} in Room ${data.room_no} is now ${status}.`,
+                    type: "hostel",
+                    link: "/dashboard/hostel",
+                }]);
+            }
+        } catch (notifErr) {
+            console.error("Failed to insert hostel notification:", notifErr.message);
+        }
+
         res.json({ success: true, data });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });

@@ -1,6 +1,7 @@
 import React from "react";
-import { Bell, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { NotificationBell } from "./NotificationBell";
 
 const ROLE_LABELS = {
   student: "Student",
@@ -40,11 +41,7 @@ export function Header() {
       </div>
 
       <div className="flex items-center space-x-4">
-        <button className="relative p-2 text-black hover:bg-background-light border-2 border-transparent hover:border-black hover:shadow-neo-sm rounded-full transition-all">
-          <span className="sr-only">View notifications</span>
-          <Bell className="h-6 w-6" strokeWidth={2.5} />
-          <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-accent-yellow border-2 border-black" />
-        </button>
+        <NotificationBell />
 
         <div className="flex items-center space-x-3 pl-4 border-l-3 border-black">
           <div className="text-right hidden sm:block">

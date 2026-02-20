@@ -58,6 +58,30 @@ export const createEvent = async (req, res) => {
       .single();
 
     if (error) return res.status(500).json({ message: error.message });
+
+    // --- Bulk Insert Notifications for Students ---
+    try {
+      if (status !== "Completed" && status !== "Cancelled") {
+        const { data: students, error: studentError } = await supabase
+          .from("users")
+          .select("id")
+          .eq("role", "student");
+
+        if (!studentError && students && students.length > 0) {
+          const notifications = students.map(student => ({
+            user_id: student.id,
+            title: "New Event Posted",
+            message: `A new ${category || 'event'} "${title}" has been scheduled for ${date}. Venue: ${venue}.`,
+            type: "event",
+            link: "/dashboard/events",
+          }));
+          await supabase.from("notifications").insert(notifications);
+        }
+      }
+    } catch (notifErr) {
+      console.error("Failed to insert event notifications:", notifErr.message);
+    }
+
     return res.status(201).json(data);
   } catch (err) {
     return res.status(500).json({ message: err.message });

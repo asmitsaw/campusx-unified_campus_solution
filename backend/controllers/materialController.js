@@ -18,6 +18,27 @@ export const uploadMaterial = async (req, res) => {
 
     if (error) throw error;
 
+    // --- Bulk Insert Notifications for Students ---
+    try {
+      const { data: students, error: studentError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("role", "student");
+
+      if (!studentError && students && students.length > 0) {
+        const notifications = students.map(student => ({
+          user_id: student.id,
+          title: "New Study Material Posted",
+          message: `A new material "${title}" has been uploaded by the faculty.`,
+          type: "library",
+          link: "/dashboard/lms",
+        }));
+        await supabase.from("notifications").insert(notifications);
+      }
+    } catch (notifErr) {
+      console.error("Failed to insert material notifications:", notifErr.message);
+    }
+
     res.json({
       success: true,
       message: "Material uploaded successfully"

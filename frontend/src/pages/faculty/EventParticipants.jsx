@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Users, ArrowLeft, Mail, Calendar, Loader, Download, Search } from "lucide-react";
 
-const API = "http://localhost:5055/api/ev-events";
+const API = "http://localhost:5000/api/ev-events";
 
 export default function EventParticipants() {
   const { id } = useParams();

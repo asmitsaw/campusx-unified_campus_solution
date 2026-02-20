@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Loader, Calendar, Clock, MapPin, ArrowRight, Info, Search } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
-const API = "http://localhost:5055/api/ev-events";
-const STATIC = "http://localhost:5055";
+const API = "http://localhost:5000/api/ev-events";
+const STATIC = "http://localhost:5000";
 
 const CAT_COLORS = {
   Technical:  { bg: "bg-neo-blue",      text: "text-black" },
