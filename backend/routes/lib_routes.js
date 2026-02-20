@@ -7,9 +7,17 @@ import {
   issueBook,
   getIssuedBooks,
   getMyRequests,
+  sendMessage,
+  getMessages,
+  getChatUsers,
 } from "../controllers/lib_controller.js";
 
 const router = express.Router();
+
+// --- Library Chat Routes ---
+router.post("/messages", sendMessage);
+router.get("/messages", getMessages);
+router.get("/chat-users", getChatUsers);
 
 // Book search
 router.get("/search", searchBooks);
