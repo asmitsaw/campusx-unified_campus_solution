@@ -13,6 +13,7 @@ import {
   BarChart,
   School,
   Home,
+  ScanLine,
 } from "lucide-react";
 
 const navigation = [
@@ -20,7 +21,7 @@ const navigation = [
   { name: "Analytics", href: "/dashboard/analytics", icon: BarChart },
   { name: "Attendance", href: "/dashboard/attendance", icon: Calendar },
   { name: "Hostel", href: "/dashboard/hostel", icon: Home },
-  { name: "Library", href: "/dashboard/library", icon: BookOpen },
+  { name: "Library",        href: "/dashboard/library",      icon: BookOpen  },
   { name: "Events", href: "/dashboard/events", icon: Verified },
   { name: "Placement", href: "/dashboard/placement", icon: Briefcase },
   { name: "LMS Portal", href: "/dashboard/lms", icon: BookOpen },

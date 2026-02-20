@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function Library() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -9,6 +10,7 @@ export default function Library() {
   const [issuedBooks, setIssuedBooks] = useState([]);
   const [myRequests, setMyRequests]   = useState([]);
   const [toast, setToast]             = useState(null);
+  const navigate = useNavigate();
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -419,6 +421,19 @@ export default function Library() {
                                     <span className="material-symbols-outlined text-sm">recommend</span>
                                 </div>
                                 <span className="text-sm font-bold">Suggest Purchase</span>
+                            </div>
+                            <span className="material-symbols-outlined font-bold group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                        </button>
+                        <button
+                            onClick={() => navigate('/dashboard/lib-attendance')}
+                            id="lib-attendance-entry-btn"
+                            className="w-full flex items-center justify-between border-[3px] border-black bg-[#39FF14] p-3 hover:shadow-[4px_4px_0px_0px_#000] hover:-translate-y-1 transition-all group"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="size-10 border-2 border-black bg-black flex items-center justify-center text-[#39FF14]">
+                                    <span className="material-symbols-outlined text-sm">qr_code_scanner</span>
+                                </div>
+                                <span className="text-sm font-black uppercase">Library Attendance (QR)</span>
                             </div>
                             <span className="material-symbols-outlined font-bold group-hover:translate-x-1 transition-transform">arrow_forward</span>
                         </button>

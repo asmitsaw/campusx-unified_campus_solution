@@ -14,6 +14,7 @@ import {
     Home,
     ShieldCheck,
     ClipboardList,
+    ScanLine,
 } from "lucide-react";
 
 const ROLE_LABELS = {
@@ -70,6 +71,12 @@ const ALL_NAV_ITEMS = [
         name: "Manage Library",
         href: "/faculty/library",
         icon: BookOpen,
+        roles: ["librarian", "admin"],
+    },
+    {
+        name: "Lib Attendance",
+        href: "/faculty/lib-attendance",
+        icon: ScanLine,
         roles: ["librarian", "admin"],
     },
     {

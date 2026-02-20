@@ -15,6 +15,7 @@ import Library from "./pages/lib_StudentView";
 import Events from "./pages/Events";
 import Hostel from "./pages/Hostel";
 import LMS from "./pages/LMS";
+import LibAttendanceStudent from "./pages/lib_AttendanceStudent";
 
 // Faculty Layout & Pages
 import FacultyLayout from "./components/layout/FacultyLayout";
@@ -23,6 +24,7 @@ import ManageAttendance from "./pages/faculty/ManageAttendance";
 import ManageStudents from "./pages/faculty/ManageStudents";
 import ManageEvents from "./pages/faculty/ManageEvents";
 import ManageLibrary from "./pages/faculty/lib_ManageLibrary";
+import LibAttendanceLibrarian from "./pages/faculty/lib_AttendanceLibrarian";
 import ManageHostel from "./pages/faculty/ManageHostel";
 import ManagePlacements from "./pages/faculty/ManagePlacements";
 import AdminPanel from "./pages/faculty/AdminPanel";
@@ -61,6 +63,7 @@ function App() {
             <Route path="events" element={<Events />} />
             <Route path="hostel" element={<Hostel />} />
             <Route path="lms" element={<LMS />} />
+            <Route path="lib-attendance" element={<LibAttendanceStudent />} />
           </Route>
 
           {/* Faculty/Admin Routes */}
@@ -79,6 +82,7 @@ function App() {
             <Route path="classes" element={<ManageClasses />} />
             <Route path="events" element={<ManageEvents />} />
             <Route path="library" element={<ManageLibrary />} />
+            <Route path="lib-attendance" element={<LibAttendanceLibrarian />} />
             <Route path="hostel" element={<ManageHostel />} />
             <Route path="placements" element={<ManagePlacements />} />
             <Route path="admin" element={<AdminPanel />} />
