@@ -136,7 +136,7 @@ export default function Library() {
                     </div>
                     <div>
                         <h3 className="text-xl font-black text-white uppercase mb-1" style={{ textShadow: "2px 2px 0px #000" }}>Action Required</h3>
-                        <p className="text-sm font-bold text-black bg-white inline-block px-2 py-1 border-2 border-black">'Introduction to Algorithms' is 3 days overdue. Fine: $1.50.</p>
+                        <p className="text-sm font-bold text-black bg-white inline-block px-2 py-1 border-2 border-black">'Introduction to Algorithms' is 3 days overdue. Fine: ₹0.00</p>
                     </div>
                 </div>
                 <button className="sm:border-l-3 border-t-3 sm:border-t-0 border-black bg-white hover:bg-gray-100 px-8 py-4 font-black text-lg uppercase transition-colors flex items-center justify-center gap-2 group">
