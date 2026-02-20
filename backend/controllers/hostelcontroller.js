@@ -1,5 +1,26 @@
 import supabase from "../config/supabase.js";
 
+// ==================== STUDENT SEARCH (for allocation) ====================
+
+export const searchStudents = async (req, res) => {
+    try {
+        const { q } = req.query;
+        if (!q || q.trim().length < 2) return res.json({ success: true, data: [] });
+
+        const { data, error } = await supabase
+            .from("users")
+            .select("id, name, email")
+            .eq("role", "student")
+            .or(`name.ilike.%${q}%,email.ilike.%${q}%`)
+            .limit(10);
+
+        if (error) throw error;
+        res.json({ success: true, data });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
 // ==================== ROOMS ====================
 
 export const getRooms = async (req, res) => {
@@ -11,6 +32,21 @@ export const getRooms = async (req, res) => {
             .order("room_no");
         if (error) throw error;
         res.json({ success: true, data });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+export const getMyRoom = async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from("hostel_rooms")
+            .select("*")
+            .eq("student_id", req.user.id)
+            .single();
+
+        if (error && error.code !== "PGRST116") throw error; // PGRST116 = no rows
+        res.json({ success: true, data: data || null });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }

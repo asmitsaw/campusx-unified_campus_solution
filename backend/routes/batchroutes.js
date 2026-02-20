@@ -8,8 +8,8 @@ const router = express.Router();
 router.post("/", protect, authorize("admin"), createBatch);
 router.delete("/:id", protect, authorize("admin"), deleteBatch);
 
-// Admin + Faculty: view batches and students
-router.get("/", protect, authorize("admin", "faculty"), getBatches);
-router.get("/:id/students", protect, authorize("admin", "faculty"), getBatchStudents);
+// Admin + Faculty + Warden: view batches and students
+router.get("/", protect, authorize("admin", "faculty", "hostel_warden"), getBatches);
+router.get("/:id/students", protect, authorize("admin", "faculty", "hostel_warden"), getBatchStudents);
 
 export default router;

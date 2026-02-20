@@ -119,7 +119,13 @@ export default function ManageStudents() {
 
         setCreating(true);
         try {
-            await apiPost("/batches", { ...batchForm, students });
+            const res = await apiPost("/batches", { ...batchForm, students });
+
+            // Download credential CSV if available
+            if (res.credentials && res.credentials.length > 0) {
+                downloadCredentialCSV(res.credentials, batchForm.name);
+            }
+
             setShowCreateBatch(false);
             setBatchForm({ name: "", branch: "CSE", year: "1st", academic_year: "2025-26" });
             setManualStudents([{ roll_no: "", name: "", email: "" }]);
@@ -129,6 +135,24 @@ export default function ManageStudents() {
             alert(e.message || "Failed to create batch");
         }
         setCreating(false);
+    };
+
+    // Generate and download credential CSV
+    const downloadCredentialCSV = (credentials, batchName) => {
+        const header = "Roll No,Name,Email,Password";
+        const rows = credentials.map(c =>
+            `${c.roll_no},${c.name},${c.email},${c.password}`
+        );
+        const csv = [header, ...rows].join("\n");
+        const blob = new Blob([csv], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${batchName.replace(/\s+/g, "_")}_credentials.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     };
 
     // Delete batch
