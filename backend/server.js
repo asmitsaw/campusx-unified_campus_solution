@@ -24,7 +24,18 @@ app.use("/api/library", libraryRoutes);
 
 
 app.get("/", (req, res) => {
-  res.send("🚀 API Running with Supabase");
+  res.json({ message: "🚀 API Running with Supabase" });
+});
+
+// 404 — always return JSON, never HTML
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: `Route not found: ${req.method} ${req.originalUrl}` });
+});
+
+// Global error handler — always return JSON, never HTML
+app.use((err, req, res, next) => {
+  console.error("❌ Unhandled error:", err);
+  res.status(500).json({ success: false, message: err.message || "Internal Server Error" });
 });
 
 const PORT = process.env.PORT || 5000;
