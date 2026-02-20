@@ -7,6 +7,9 @@ import {
   issueBook,
   getIssuedBooks,
   getMyRequests,
+  sendMessage,
+  getMessages,
+  getChatUsers,
 } from "../controllers/lib_controller.js";
 
 const router = express.Router();
@@ -31,5 +34,10 @@ router.post("/issue", issueBook);
 
 // Get issued books (all or filtered by user_id for student)
 router.get("/my-books", getIssuedBooks);
+
+// Chat system
+router.post("/messages", sendMessage);
+router.get("/messages", getMessages);
+router.get("/chat-users", getChatUsers);
 
 export default router;

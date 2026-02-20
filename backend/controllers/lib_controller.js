@@ -258,3 +258,91 @@ export const getMyRequests = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// ── Chat Functionality ──────────────────────────────────────────────────────
+
+/**
+ * Send a chat message
+ * POST /api/library/messages
+ */
+export const sendMessage = async (req, res) => {
+  try {
+    const { sender_id, message, sender_role, receiver_id } = req.body;
+    
+    if (!sender_id || !message) {
+      return res.status(400).json({ message: "Sender ID and message are required" });
+    }
+
+    const { data, error } = await supabase
+      .from("lib_messages")
+      .insert([{
+        sender_id,
+        receiver_id: receiver_id || "librarian",
+        message,
+        sender_role: sender_role || "student",
+        created_at: new Date().toISOString()
+      }])
+      .select();
+
+    if (error) throw error;
+    res.status(201).json(data[0]);
+  } catch (error) {
+    console.error("[Library Chat] Send Message Error:", error.message);
+    res.status(500).json({ message: "Failed to send message", error: error.message });
+  }
+};
+
+/**
+ * Get messages for a student or thread
+ * GET /api/library/messages?student_id=...
+ */
+export const getMessages = async (req, res) => {
+  try {
+    const { student_id } = req.query;
+    if (!student_id) return res.status(400).json({ message: "Student ID required" });
+
+    // Fetch messages where student is either sender or receiver
+    const { data, error } = await supabase
+      .from("lib_messages")
+      .select("*")
+      .or(`sender_id.eq.${student_id},receiver_id.eq.${student_id}`)
+      .order("created_at", { ascending: true });
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error("[Library Chat] Get Messages Error:", error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * Get list of students who have messaged (for Librarian view)
+ * GET /api/library/chat-users
+ */
+export const getChatUsers = async (req, res) => {
+  try {
+    // 1. Get unique sender_ids who are students
+    const { data: messages, error: msgError } = await supabase
+      .from("lib_messages")
+      .select("sender_id")
+      .eq("sender_role", "student");
+
+    if (msgError) throw msgError;
+
+    const studentIds = [...new Set(messages.map(m => m.sender_id))];
+    if (studentIds.length === 0) return res.json([]);
+
+    // 2. Fetch user details for those IDs
+    const { data: users, error: userError } = await supabase
+      .from("users")
+      .select("id, name, email")
+      .in("id", studentIds);
+
+    if (userError) throw userError;
+    res.json(users);
+  } catch (error) {
+    console.error("[Library Chat] Get Chat Users Error:", error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
