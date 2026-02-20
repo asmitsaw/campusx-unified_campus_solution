@@ -1,6 +1,79 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function Library() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [issuedBooks, setIssuedBooks] = useState([]); 
+
+  const fetchIssuedBooks = async () => {
+    try {
+        const userId = "user_123_placeholder"; // Should match the one used in issue
+        // In real app, we might get userId from token on backend, but here we pass it or simplistic auth
+        const response = await fetch(`http://localhost:5000/api/library/my-books?user_id=${userId}`);
+        if (response.ok) {
+            const data = await response.json();
+            setIssuedBooks(data || []);
+        }
+    } catch (error) {
+        console.error("Error fetching issued books:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchIssuedBooks();
+  }, []);
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setLoading(true);
+    try {
+        const response = await fetch(`http://localhost:5000/api/library/search?query=${encodeURIComponent(searchQuery)}`);
+        const data = await response.json();
+        if (response.ok) {
+            setSearchResults(data || []);
+        } else {
+            console.error("Search failed:", data);
+            setSearchResults([]);
+        }
+    } catch (error) {
+        console.error("Error fetching books:", error);
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const handleIssueBook = async (book) => {
+    const userId = "user_123_placeholder"; 
+
+    try {
+        const response = await fetch('http://localhost:5000/api/library/issue', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                book_id: book.id, 
+                user_id: userId,
+                title: book.title,
+                author: book.author,
+                image: book.image
+            })
+        });
+        
+        const result = await response.json();
+        if (response.ok) {
+            alert(`Book "${book.title}" issued successfully!`);
+            fetchIssuedBooks(); // Refresh list
+            setSearchResults([]); // Optional: clear search results
+            setSearchQuery('');
+        } else {
+            alert(`Failed to issue book: ${result.message}`);
+        }
+    } catch (error) {
+        console.error("Error issuing book:", error);
+        alert("Error connecting to server.");
+    }
+  };
+
   return (
     <div className="font-display bg-neo-bg text-neo-black min-h-screen overflow-x-hidden p-6 -m-6">
       <div className="flex flex-col gap-8 mx-auto max-w-[1600px]">
@@ -41,25 +114,67 @@ export default function Library() {
                 {/* Catalog Search */}
                 <div className="bg-white p-6 border-3 border-black shadow-neo">
                     <h3 className="font-black text-xl mb-4 uppercase">Catalog Search</h3>
-                    <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex flex-col md:flex-row gap-4 mb-6">
                         <div className="flex-1 relative">
                             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-black pointer-events-none">
                                 <span className="material-symbols-outlined">manage_search</span>
                             </div>
-                            <input className="w-full h-14 border-2 border-black pl-12 pr-4 text-black font-bold placeholder-gray-500 focus:bg-neo-yellow focus:ring-0 transition-colors shadow-sm outline-none" placeholder="Search by title, author, or ISBN..." type="text"/>
+                            <input 
+                                className="w-full h-14 border-2 border-black pl-12 pr-4 text-black font-bold placeholder-gray-500 focus:bg-neo-yellow focus:ring-0 transition-colors shadow-sm outline-none" 
+                                placeholder="Search by title, author, or publisher..." 
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                            />
                         </div>
                         <div className="flex gap-4">
-                            <select className="h-14 border-2 border-black bg-white px-4 font-bold focus:ring-0 focus:bg-neo-blue transition-colors shadow-neo-sm">
-                                <option>All Categories</option>
-                                <option>Computer Science</option>
-                                <option>Literature</option>
-                                <option>History</option>
-                            </select>
-                            <button className="h-14 px-8 border-2 border-black bg-neo-purple text-white font-black hover:bg-purple-600 transition-colors shadow-neo-sm active:translate-x-[2px] active:translate-y-[2px] active:shadow-none flex items-center gap-2">
-                                <span>SEARCH</span>
+                            <button 
+                                onClick={handleSearch}
+                                disabled={loading}
+                                className="h-14 px-8 border-2 border-black bg-neo-purple text-white font-black hover:bg-purple-600 transition-colors shadow-neo-sm active:translate-x-[2px] active:translate-y-[2px] active:translate-x-[2px] active:shadow-none flex items-center gap-2"
+                            >
+                                {loading ? <span className="animate-spin material-symbols-outlined">progress_activity</span> : <span>SEARCH</span>}
                             </button>
                         </div>
                     </div>
+
+                    {/* Search Results */}
+                    {searchResults.length > 0 && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 max-h-[600px] overflow-y-auto">
+                            {searchResults.map((book) => (
+                                <div key={book.id || book.title} className="flex gap-4 p-4 border-2 border-black bg-neo-bg hover:shadow-neo-sm transition-all">
+                                    <div className="w-20 h-28 shrink-0 bg-gray-200 border-2 border-black overflow-hidden">
+                                        <img 
+                                            src={book.image || "https://placehold.co/100x150?text=No+Image"} 
+                                            alt={book.title} 
+                                            className="w-full h-full object-cover"
+                                            referrerPolicy="no-referrer"
+                                            onError={(e) => e.target.src = "https://placehold.co/100x150?text=No+Image"}
+                                        />
+                                    </div>
+                                    <div className="flex flex-col justify-between flex-1">
+                                        <div>
+                                            <h4 className="font-black text-lg leading-tight line-clamp-2">{book.title}</h4>
+                                            <p className="text-xs font-bold text-gray-600 mt-1">{book.author}</p>
+                                            <p className="text-xs mt-1 bg-white inline-block border border-black px-1 font-mono truncate max-w-[150px]">{book.publisher} • {book.year}</p>
+                                        </div>
+                                        <button 
+                                            onClick={() => handleIssueBook(book)}
+                                            className="self-start mt-2 bg-black text-white px-4 py-1.5 text-xs font-black uppercase border-2 border-transparent hover:bg-neo-green hover:text-black hover:border-black transition-colors"
+                                        >
+                                            Issue Book
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {searchQuery && searchResults.length === 0 && !loading && (
+                        <div className="text-center py-8 font-bold text-gray-500 uppercase">
+                            No books found. Try a different search.
+                        </div>
+                    )}
                 </div>
 
                 {/* Issued Books Table */}
@@ -85,78 +200,68 @@ export default function Library() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y-2 divide-black text-black">
-                                <tr className="group bg-neo-red/10 hover:bg-neo-red/20 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-4">
-                                            <div className="h-20 w-14 shrink-0 overflow-hidden border-2 border-black bg-gray-200 shadow-neo-sm group-hover:scale-110 transition-transform">
-                                                <img alt="Book cover" className="h-full w-full object-cover grayscale group-hover:grayscale-0 transition-all" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCuSYOxXpnacqkStBUARHAIZSUicSOTJBI6CdNQG-eMpAYB7HxHxUY_stp1dPzuZ7y_EtbuFvx3D6SND_UgpbAQ3nPCuBT76vYCkRXPgjSZjTG7GkVlYEiloJv8RqTqp61nw__mmsUTyN01jZQjlyaqGDHJBVYwueWR-CaVXWb3mQTdHNDLwGSE2sioqAMZO6odwtZBthBnOdLo6sVt_0iX1OOEjFR6otgRL2XAlEtCm7jP0sp0MD8bw_Z-ZWQIXKjW0nA8m3kHm7w_"/>
-                                            </div>
-                                            <div>
-                                                <p className="font-black text-lg">Intro to Algorithms</p>
-                                                <p className="text-sm font-bold">Cormen, Leiserson</p>
-                                                <p className="text-xs mt-1 font-mono bg-white inline-block border border-black px-1">ISBN: 978-0262033848</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 font-bold">Oct 10, 2023</td>
-                                    <td className="px-6 py-4 font-black text-neo-red">Oct 24, 2023</td>
-                                    <td className="px-6 py-4 text-center">
-                                        <span className="inline-flex items-center bg-neo-red border-2 border-black px-3 py-1 text-xs font-black text-white uppercase shadow-neo-sm transform -rotate-2">
-                                            Overdue
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <button className="border-2 border-black bg-neo-black text-white px-4 py-2 text-sm font-bold hover:bg-neo-red transition-colors shadow-neo-sm active:shadow-none active:translate-y-1">Pay Fine</button>
-                                    </td>
-                                </tr>
-                                <tr className="group hover:bg-neo-bg transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-4">
-                                            <div className="h-20 w-14 shrink-0 overflow-hidden border-2 border-black bg-gray-200 shadow-neo-sm group-hover:scale-110 transition-transform">
-                                                <img alt="Book cover" className="h-full w-full object-cover grayscale group-hover:grayscale-0 transition-all" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAw-5t6J7eBDZch0oQ5dyBGvQtsLEzrno4RSCjiQnSdyUqK9jbEVrLOzHIQZzRLbOEHyL075hzhRyXA2aOnmoM2UES0FiocRN_qgSMOQkiXkGxMnf-r_X_J36GtJGXkXAVB6ci4An3uh-jy1AW0jqWAGDw87xLYNjsme8DrgdJZn5w8k9m_fiB3GYimNTJ14IJsknkopMIf_hxrAMkMhPwVy_selqlNFR7uY7VE0dY3JhrM-NTP2hJI-kDZ2zCRrjr8HZwfh30cf0yp"/>
-                                            </div>
-                                            <div>
-                                                <p className="font-black text-lg">Design Patterns</p>
-                                                <p className="text-sm font-bold">Erich Gamma et al.</p>
-                                                <p className="text-xs mt-1 font-mono bg-white inline-block border border-black px-1">ISBN: 978-0201633610</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 font-bold">Oct 15, 2023</td>
-                                    <td className="px-6 py-4 font-bold">Oct 29, 2023</td>
-                                    <td className="px-6 py-4 text-center">
-                                        <span className="inline-flex items-center bg-neo-green border-2 border-black px-3 py-1 text-xs font-black text-black uppercase shadow-neo-sm">
-                                            On Time
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <button className="border-2 border-black bg-white px-4 py-2 text-sm font-bold hover:bg-neo-green hover:text-black transition-colors shadow-neo-sm active:shadow-none active:translate-y-1">Renew</button>
-                                    </td>
-                                </tr>
-                                <tr className="group bg-neo-yellow/10 hover:bg-neo-yellow/20 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-4">
-                                            <div className="h-20 w-14 shrink-0 overflow-hidden border-2 border-black bg-gray-200 shadow-neo-sm group-hover:scale-110 transition-transform">
-                                                <img alt="Book cover" className="h-full w-full object-cover grayscale group-hover:grayscale-0 transition-all" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAS4d5vFNgHCC3Vc5eQoxNrdEVbigAOwN_XQYq2T0m4ntP5omhJqVCSnXy5bpXPfwzxgAFLUXTVVWDZWaA6yAd7oeabA5DuUhpCOugF4R3TRdY_So_3jtbfVR4oYqx9ZenIfmrHJps-NbxwrJay0PMvGC68cv132-vyE1rDe6HXyX_q9BN8Brbdl5mJDyDv9lwAarsfXC_QCqln6aEC-X1OqXIVNZyeupWZHWROXvRcWVN95HxouvZefC-w0oDotJUT3F2wdL5bt-GG"/>
-                                            </div>
-                                            <div>
-                                                <p className="font-black text-lg">Clean Code</p>
-                                                <p className="text-sm font-bold">Robert C. Martin</p>
-                                                <p className="text-xs mt-1 font-mono bg-white inline-block border border-black px-1">ISBN: 978-0132350884</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 font-bold">Oct 12, 2023</td>
-                                    <td className="px-6 py-4 font-black text-neo-black underline decoration-wavy decoration-neo-red">Tomorrow</td>
-                                    <td className="px-6 py-4 text-center">
-                                        <span className="inline-flex items-center bg-neo-yellow border-2 border-black px-3 py-1 text-xs font-black text-black uppercase shadow-neo-sm transform rotate-2">
-                                            Due Soon
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <button className="border-2 border-black bg-white px-4 py-2 text-sm font-bold hover:bg-neo-yellow transition-colors shadow-neo-sm active:shadow-none active:translate-y-1">Renew</button>
-                                    </td>
-                                </tr>
+                                {issuedBooks.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="5" className="px-6 py-8 text-center font-bold text-gray-500 uppercase">
+                                            No books issued yet.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    issuedBooks.map((book) => {
+                                        const dueDate = new Date(book.due_date);
+                                        const isOverdue = new Date() > dueDate;
+                                        const daysLeft = Math.ceil((dueDate - new Date()) / (1000 * 60 * 60 * 24));
+                                        
+                                        return (
+                                            <tr key={book.id} className={`group transition-colors ${isOverdue ? "bg-neo-red/10 hover:bg-neo-red/20" : "hover:bg-neo-bg"}`}>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="h-20 w-14 shrink-0 overflow-hidden border-2 border-black bg-gray-200 shadow-neo-sm group-hover:scale-110 transition-transform">
+                                                            <img 
+                                                                alt={book.title} 
+                                                                className="h-full w-full object-cover grayscale group-hover:grayscale-0 transition-all" 
+                                                                src={book.image || "https://placehold.co/100x150?text=No+Image"}
+                                                                referrerPolicy="no-referrer"
+                                                                onError={(e) => e.target.src = "https://placehold.co/100x150?text=No+Image"}
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-black text-lg">{book.title}</p>
+                                                            <p className="text-sm font-bold">{book.author}</p>
+                                                            <p className="text-xs mt-1 font-mono bg-white inline-block border border-black px-1">ID: {book.book_id}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 font-bold">{new Date(book.issue_date).toLocaleDateString()}</td>
+                                                <td className={`px-6 py-4 font-black ${isOverdue ? "text-neo-red" : "text-neo-black"}`}>
+                                                    {dueDate.toLocaleDateString()}
+                                                    <br/>
+                                                    <span className="text-xs font-normal text-gray-600">
+                                                        {isOverdue ? `${Math.abs(daysLeft)} days ago` : `${daysLeft} days left`}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    {isOverdue ? (
+                                                        <span className="inline-flex items-center bg-neo-red border-2 border-black px-3 py-1 text-xs font-black text-white uppercase shadow-neo-sm transform -rotate-2">
+                                                            Overdue
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center bg-neo-green border-2 border-black px-3 py-1 text-xs font-black text-black uppercase shadow-neo-sm">
+                                                            On Time
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    {isOverdue ? (
+                                                        <button className="border-2 border-black bg-neo-black text-white px-4 py-2 text-sm font-bold hover:bg-neo-red transition-colors shadow-neo-sm active:shadow-none active:translate-y-1">Pay Fine</button>
+                                                    ) : (
+                                                        <button className="border-2 border-black bg-white px-4 py-2 text-sm font-bold hover:bg-neo-yellow transition-colors shadow-neo-sm active:shadow-none active:translate-y-1">Renew</button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
                             </tbody>
                         </table>
                     </div>
