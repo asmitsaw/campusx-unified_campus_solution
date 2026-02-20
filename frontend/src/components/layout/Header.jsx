@@ -1,7 +1,29 @@
-import React from 'react';
-import { Bell, Search } from 'lucide-react';
+import React from "react";
+import { Bell, Search } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+
+const ROLE_LABELS = {
+  student: "Student",
+  faculty: "Faculty",
+  event_manager: "Event Manager",
+  librarian: "Librarian",
+  hostel_warden: "Hostel Warden",
+  tpo: "T&P Officer",
+  admin: "Administrator",
+};
 
 export function Header() {
+  const { user } = useAuth();
+
+  const displayName = user?.name || "User";
+  const displayRole = ROLE_LABELS[user?.role] || "User";
+  const initials = displayName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
   return (
     <header className="bg-white border-b-3 border-black h-16 px-6 flex items-center justify-between sticky top-0 z-10">
       <div className="flex items-center w-full max-w-md">
@@ -26,11 +48,15 @@ export function Header() {
 
         <div className="flex items-center space-x-3 pl-4 border-l-3 border-black">
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-bold text-black leading-tight">Alex Johnson</p>
-            <p className="text-xs font-bold text-slate-500 uppercase">Year 3</p>
+            <p className="text-sm font-bold text-black leading-tight">
+              {displayName}
+            </p>
+            <p className="text-xs font-bold text-slate-500 uppercase">
+              {displayRole}
+            </p>
           </div>
           <div className="h-10 w-10 rounded-full bg-primary border-2 border-black flex items-center justify-center text-white font-black shadow-sm cursor-pointer hover:shadow-neo-sm transition-all">
-            AJ
+            {initials}
           </div>
         </div>
       </div>

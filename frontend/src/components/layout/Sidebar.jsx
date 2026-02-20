@@ -1,20 +1,41 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, BookOpen, Briefcase, Calendar, Settings, LogOut, Verified, BarChart, School, Home } from 'lucide-react';
+import React from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import {
+  LayoutDashboard,
+  Users,
+  BookOpen,
+  Briefcase,
+  Calendar,
+  Settings,
+  LogOut,
+  Verified,
+  BarChart,
+  School,
+  Home,
+} from "lucide-react";
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard/overview', icon: LayoutDashboard }, // Added as top link
-  { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart },
-  { name: 'Attendance', href: '/dashboard/attendance', icon: Calendar },
-  { name: 'Hostel', href: '/dashboard/hostel', icon: Home },
-  { name: 'Library', href: '/dashboard/library', icon: BookOpen },
-  { name: 'Events', href: '/dashboard/events', icon: Verified },
-  { name: 'Placement', href: '/dashboard/placement', icon: Briefcase },
-  { name: 'LMS Portal', href: '/dashboard/lms', icon: BookOpen },
-  { name: 'Profile', href: '/dashboard/profile', icon: Users }, // Moved to bottom
+  { name: "Dashboard", href: "/dashboard/overview", icon: LayoutDashboard },
+  { name: "Analytics", href: "/dashboard/analytics", icon: BarChart },
+  { name: "Attendance", href: "/dashboard/attendance", icon: Calendar },
+  { name: "Hostel", href: "/dashboard/hostel", icon: Home },
+  { name: "Library", href: "/dashboard/library", icon: BookOpen },
+  { name: "Events", href: "/dashboard/events", icon: Verified },
+  { name: "Placement", href: "/dashboard/placement", icon: Briefcase },
+  { name: "LMS Portal", href: "/dashboard/lms", icon: BookOpen },
+  { name: "Profile", href: "/dashboard/profile", icon: Users },
 ];
 
 export function Sidebar() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
     <div className="flex h-full w-64 flex-col bg-white border-r-3 border-black text-slate-900">
       <div className="flex h-16 items-center px-6 border-b-3 border-black bg-accent-yellow">
@@ -30,16 +51,18 @@ export function Sidebar() {
             key={item.name}
             to={item.href}
             className={({ isActive }) =>
-              `group flex items-center px-3 py-3 text-sm font-bold border-2 border-black rounded transition-all duration-150 ${
-                isActive
-                  ? 'bg-primary text-white shadow-neo-sm translate-x-[2px] translate-y-[2px]'
-                  : 'bg-white text-slate-700 hover:bg-slate-50 hover:shadow-neo-sm hover:-translate-y-[2px] hover:-translate-x-[1px]'
+              `group flex items-center px-3 py-3 text-sm font-bold border-2 border-black rounded transition-all duration-150 ${isActive
+                ? "bg-primary text-white shadow-neo-sm translate-x-[2px] translate-y-[2px]"
+                : "bg-white text-slate-700 hover:bg-slate-50 hover:shadow-neo-sm hover:-translate-y-[2px] hover:-translate-x-[1px]"
               }`
             }
           >
             {({ isActive }) => (
               <>
-                <item.icon className={`mr-3 h-5 w-5 flex-shrink-0 ${isActive ? 'text-white' : 'text-slate-900'}`} strokeWidth={2.5} />
+                <item.icon
+                  className={`mr-3 h-5 w-5 flex-shrink-0 ${isActive ? "text-white" : "text-slate-900"}`}
+                  strokeWidth={2.5}
+                />
                 {item.name}
               </>
             )}
@@ -52,7 +75,10 @@ export function Sidebar() {
           <Settings className="mr-3 h-5 w-5" strokeWidth={2.5} />
           Settings
         </button>
-        <button className="group flex w-full items-center px-3 py-2 text-sm font-bold text-red-600 border-2 border-transparent hover:border-black hover:bg-red-50 hover:shadow-neo-sm rounded mt-1 transition-all">
+        <button
+          onClick={handleLogout}
+          className="group flex w-full items-center px-3 py-2 text-sm font-bold text-red-600 border-2 border-transparent hover:border-black hover:bg-red-50 hover:shadow-neo-sm rounded mt-1 transition-all"
+        >
           <LogOut className="mr-3 h-5 w-5" strokeWidth={2.5} />
           Logout
         </button>
