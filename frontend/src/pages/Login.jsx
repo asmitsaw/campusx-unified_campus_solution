@@ -155,24 +155,7 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Divider */}
-          <div className="relative flex items-center py-2">
-            <div className="flex-grow border-t-3 border-black"></div>
-            <span className="flex-shrink mx-4 text-xs font-black uppercase text-black bg-white px-2">
-              Or
-            </span>
-            <div className="flex-grow border-t-3 border-black"></div>
-          </div>
-
-          {/* Secondary Actions */}
-          <div className="grid grid-cols-2 gap-4">
-            <button className="bg-white text-sm font-black py-4 px-2 border-3 border-black shadow-neo-sm rounded hover:bg-slate-50 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-neo-hover active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-100 uppercase">
-              Parent Portal
-            </button>
-            <button className="bg-white text-sm font-black py-4 px-2 border-3 border-black shadow-neo-sm rounded hover:bg-slate-50 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-neo-hover active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-100 uppercase">
-              Apply Now
-            </button>
-          </div>
+        
         </main>
 
         {/* Footer Links */}
