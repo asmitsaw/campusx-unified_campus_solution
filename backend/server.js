@@ -3,8 +3,8 @@ import dotenv from "dotenv";
 import cors from "cors";
 import authRoutes from "./routes/authroutes.js";
 import dashboardRoutes from "./routes/dashboardroutes.js";
-
-
+import eventRoutes from "./routes/eventroutes.js";
+import placementRoutes from "./routes/placementroutes.js";
 import libraryRoutes from "./routes/libraryRoutes.js";
 
 dotenv.config();
@@ -16,7 +16,6 @@ app.use(express.json());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/dashboard", dashboardRoutes);
-app.use("/api/library", libraryRoutes);
 
 
 app.get("/", (req, res) => {
