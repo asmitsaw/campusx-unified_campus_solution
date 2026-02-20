@@ -13,6 +13,7 @@ import batchRoutes from "./routes/batchroutes.js";
 import classRoutes from "./routes/classroutes.js";
 import hostelRoutes from "./routes/hostelroutes.js";
 import evRoutes from "./routes/ev_routes.js";
+import notesRoutes from "./routes/notesRoutes.js";
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use("/api/library", libraryRoutes);
 app.use("/api/batches", batchRoutes);
 app.use("/api/classes", classRoutes);
 app.use("/api/hostel", hostelRoutes);
+app.use("/api/notes", notesRoutes);
 
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/materials", materialRoutes);
