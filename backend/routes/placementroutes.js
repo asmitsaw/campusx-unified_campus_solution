@@ -13,6 +13,7 @@ import {
     createTrainingSession,
     getTrainingSessions,
     getStats,
+    getRecentActivity,
 } from "../controllers/placementcontroller.js";
 
 const router = express.Router();
@@ -24,6 +25,7 @@ router.post("/apply", protect, applyPlacement);
 router.get("/my-applications", protect, getMyApplications);
 router.get("/training-sessions", protect, getTrainingSessions);
 router.get("/stats", protect, getStats);
+router.get("/recent-activity", protect, authorize("tpo", "admin"), getRecentActivity);
 
 // ── TPO only ────────────────────────────────
 router.post("/drives", protect, authorize("tpo", "admin"), createDrive);

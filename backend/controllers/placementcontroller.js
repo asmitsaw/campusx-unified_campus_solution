@@ -274,17 +274,36 @@ export const createTrainingSession = async (req, res) => {
 // ─────────────────────────────────────────────
 export const getTrainingSessions = async (req, res) => {
   try {
-    const { data, error } = await supabase
+    const { data: sessions, error } = await supabase
       .from("training_sessions")
-      .select("*, placements(company, role)")
+      .select("*")
       .order("date", { ascending: true });
 
     if (error) throw error;
-    res.json({ success: true, data });
+    if (!sessions || sessions.length === 0) return res.json({ success: true, data: [] });
+
+    // Manually enrich with placement info
+    const placementIds = [...new Set(sessions.map(s => s.placement_id).filter(Boolean))];
+    let placementsMap = {};
+    if (placementIds.length > 0) {
+      const { data: placements } = await supabase
+        .from("placements")
+        .select("id, company, role")
+        .in("id", placementIds);
+      (placements || []).forEach(p => { placementsMap[p.id] = p; });
+    }
+
+    const enriched = sessions.map(s => ({
+      ...s,
+      placements: placementsMap[s.placement_id] || null,
+    }));
+
+    res.json({ success: true, data: enriched });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 // ─────────────────────────────────────────────
 // TPO: Get placement stats summary
@@ -301,11 +320,61 @@ export const getStats = async (req, res) => {
     const avg_package = packages.length ? (packages.reduce((a, b) => a + b, 0) / packages.length).toFixed(1) : 0;
     const highest_package = packages.length ? Math.max(...packages) : 0;
     const total_applications = applications?.length || 0;
+    const companies_visiting = total_drives; // each drive = one company visit
 
     res.json({
       success: true,
-      data: { total_drives, active_drives, students_placed, avg_package, highest_package, total_applications }
+      data: { total_drives, active_drives, students_placed, avg_package, highest_package, total_applications, companies_visiting }
     });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ─────────────────────────────────────────────
+// TPO: Recent placement activity feed
+// ─────────────────────────────────────────────
+export const getRecentActivity = async (req, res) => {
+  try {
+    // Fetch latest 10 applications
+    const { data: apps, error } = await supabase
+      .from("applications")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (error) throw error;
+    if (!apps || apps.length === 0) return res.json({ success: true, data: [] });
+
+    // Fetch student names
+    const studentIds = [...new Set(apps.map(a => a.student_id).filter(Boolean))];
+    const { data: users } = await supabase
+      .from("users")
+      .select("id, name")
+      .in("id", studentIds);
+
+    // Fetch placement names
+    const placementIds = [...new Set(apps.map(a => a.placement_id).filter(Boolean))];
+    const { data: placements } = await supabase
+      .from("placements")
+      .select("id, company, role")
+      .in("id", placementIds);
+
+    const usersMap = {};
+    (users || []).forEach(u => { usersMap[u.id] = u; });
+    const placementsMap = {};
+    (placements || []).forEach(p => { placementsMap[p.id] = p; });
+
+    const activity = apps.map(a => ({
+      id: a.id,
+      student_name: usersMap[a.student_id]?.name || "A student",
+      company: placementsMap[a.placement_id]?.company || "a company",
+      role: placementsMap[a.placement_id]?.role || "",
+      status: a.status,
+      created_at: a.created_at,
+    }));
+
+    res.json({ success: true, data: activity });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
