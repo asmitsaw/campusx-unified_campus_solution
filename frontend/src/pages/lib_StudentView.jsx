@@ -1,16 +1,24 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 export default function Library() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [issuedBooks, setIssuedBooks] = useState([]); 
+  const { user } = useAuth();
+  const [issuedBooks, setIssuedBooks] = useState([]);
+  const [myRequests, setMyRequests]   = useState([]);
+  const [toast, setToast]             = useState(null);
+
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   const fetchIssuedBooks = async () => {
     try {
-        const userId = "user_123_placeholder"; // Should match the one used in issue
-        // In real app, we might get userId from token on backend, but here we pass it or simplistic auth
-        const response = await fetch(`http://localhost:5000/api/library/my-books?user_id=${userId}`);
+        if (!user) return;
+        const response = await fetch(`http://localhost:5000/api/library/my-books?user_id=${user.id}`);
         if (response.ok) {
             const data = await response.json();
             setIssuedBooks(data || []);
@@ -20,9 +28,25 @@ export default function Library() {
     }
   };
 
+  const fetchMyRequests = async () => {
+    try {
+        if (!user) return;
+        const response = await fetch(`http://localhost:5000/api/library/my-requests?user_id=${user.id}`);
+        if (response.ok) {
+            const data = await response.json();
+            setMyRequests(data || []);
+        }
+    } catch (error) {
+        console.error("Error fetching requests:", error);
+    }
+  };
+
   useEffect(() => {
-    fetchIssuedBooks();
-  }, []);
+    if (user) {
+      fetchIssuedBooks();
+      fetchMyRequests();
+    }
+  }, [user]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -43,39 +67,50 @@ export default function Library() {
     }
   };
 
-  const handleIssueBook = async (book) => {
-    const userId = "user_123_placeholder"; 
-
+  const handleRequestBook = async (book) => {
+    if (!user) {
+        showToast('Please log in to request books.', 'error');
+        return;
+    }
     try {
-        const response = await fetch('http://localhost:5000/api/library/issue', {
+        const response = await fetch('http://localhost:5000/api/library/request', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                book_id: book.id, 
-                user_id: userId,
-                title: book.title,
+                user_id:    user.id,
+                user_name:  user.name  || null,
+                user_email: user.email || null,
+                title:  book.title,
                 author: book.author,
-                image: book.image
+                image:  book.image
             })
         });
-        
         const result = await response.json();
         if (response.ok) {
-            alert(`Book "${book.title}" issued successfully!`);
-            fetchIssuedBooks(); // Refresh list
-            setSearchResults([]); // Optional: clear search results
+            showToast(`Request for "${book.title}" submitted! The librarian will review it.`);
+            fetchMyRequests();
+            setSearchResults([]);
             setSearchQuery('');
+        } else if (response.status === 409) {
+            showToast(result.message, 'error');
         } else {
-            alert(`Failed to issue book: ${result.message}`);
+            showToast(`Failed: ${result.message}`, 'error');
         }
     } catch (error) {
-        console.error("Error issuing book:", error);
-        alert("Error connecting to server.");
+        console.error("Error requesting book:", error);
+        showToast('Error connecting to server.', 'error');
     }
   };
 
   return (
     <div className="font-display bg-neo-bg text-neo-black min-h-screen overflow-x-hidden p-6 -m-6">
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed top-6 right-6 z-50 px-5 py-3 border-3 border-black font-black text-sm shadow-neo
+          ${toast.type === 'error' ? 'bg-neo-red text-white' : 'bg-neo-green text-black'}`}>
+          {toast.msg}
+        </div>
+      )}
       <div className="flex flex-col gap-8 mx-auto max-w-[1600px]">
         
         {/* Header Section (Replicated from HTML) */}
@@ -160,10 +195,11 @@ export default function Library() {
                                             <p className="text-xs mt-1 bg-white inline-block border border-black px-1 font-mono truncate max-w-[150px]">{book.publisher} • {book.year}</p>
                                         </div>
                                         <button 
-                                            onClick={() => handleIssueBook(book)}
-                                            className="self-start mt-2 bg-black text-white px-4 py-1.5 text-xs font-black uppercase border-2 border-transparent hover:bg-neo-green hover:text-black hover:border-black transition-colors"
+                                            onClick={() => handleRequestBook(book)}
+                                            className="self-start mt-2 bg-neo-blue text-white px-4 py-1.5 text-xs font-black uppercase border-2 border-black hover:bg-neo-green hover:text-black transition-colors flex items-center gap-1"
                                         >
-                                            Issue Book
+                                            <span className="material-symbols-outlined text-sm">bookmark_add</span>
+                                            Request Book
                                         </button>
                                     </div>
                                 </div>
@@ -176,6 +212,41 @@ export default function Library() {
                         </div>
                     )}
                 </div>
+
+                {/* My Book Requests */}
+                {myRequests.length > 0 && (
+                    <div className="flex flex-col bg-white border-3 border-black shadow-neo">
+                        <div className="flex items-center gap-3 px-6 py-5 border-b-3 border-black bg-neo-yellow">
+                            <div className="bg-black text-black p-1 border-2 border-white shadow-sm">
+                                <span className="material-symbols-outlined block text-white">pending_actions</span>
+                            </div>
+                            <h3 className="text-xl font-black text-black uppercase italic">My Book Requests</h3>
+                        </div>
+                        <div className="divide-y-2 divide-black">
+                            {myRequests.map((req) => {
+                                const badgeMap = {
+                                    pending:  "bg-neo-yellow text-black",
+                                    approved: "bg-neo-green text-black",
+                                    rejected: "bg-neo-red text-white",
+                                };
+                                return (
+                                    <div key={req.id} className="flex items-center justify-between px-6 py-4 hover:bg-neo-bg transition-colors">
+                                        <div>
+                                            <p className="font-black">{req.title}</p>
+                                            {req.author && <p className="text-xs font-bold text-gray-500">{req.author}</p>}
+                                            <p className="text-xs font-mono mt-1">
+                                                {new Date(req.requested_at).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                        <span className={`inline-block px-3 py-1 border-2 border-black text-xs font-black uppercase ${badgeMap[req.status] || "bg-gray-200"}`}>
+                                            {req.status}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
 
                 {/* Issued Books Table */}
                 <div className="flex flex-col bg-white border-3 border-black shadow-neo">

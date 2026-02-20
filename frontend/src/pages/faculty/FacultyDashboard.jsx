@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import {
     Users,
@@ -11,6 +11,7 @@ import {
     AlertTriangle,
 } from "lucide-react";
 
+// ── Static stats for non-librarian roles ──────────────────────────────────────
 const ROLE_STATS = {
     faculty: [
         { label: "Total Students", value: "342", icon: Users, color: "bg-neo-blue" },
@@ -23,12 +24,6 @@ const ROLE_STATS = {
         { label: "Registrations", value: "1,247", icon: Users, color: "bg-neo-blue" },
         { label: "Upcoming", value: "3", icon: Clock, color: "bg-neo-green" },
         { label: "Completed", value: "24", icon: CheckCircle, color: "bg-neo-yellow" },
-    ],
-    librarian: [
-        { label: "Total Books", value: "12,450", icon: BookOpen, color: "bg-neo-blue" },
-        { label: "Issued Today", value: "34", icon: ClipboardList, color: "bg-neo-green" },
-        { label: "Overdue", value: "17", icon: AlertTriangle, color: "bg-neo-red" },
-        { label: "New Arrivals", value: "45", icon: TrendingUp, color: "bg-neo-purple" },
     ],
     hostel_warden: [
         { label: "Total Residents", value: "580", icon: Users, color: "bg-neo-blue" },
@@ -58,6 +53,49 @@ const RECENT_ACTIVITY = [
     { text: "TCS placement drive registration open", time: "3 hrs ago", color: "bg-neo-cyan" },
 ];
 
+// ── Librarian: live book-request alerts ───────────────────────────────────────
+function useLibrarianAlerts() {
+    const [alerts, setAlerts] = useState([]);
+
+    useEffect(() => {
+        const fetchAlerts = async () => {
+            try {
+                const res = await fetch("http://localhost:5000/api/library/requests");
+                if (!res.ok) return;
+                const data = await res.json();
+
+                const now = new Date();
+                const fmt = (iso) => {
+                    const diffMs  = now - new Date(iso);
+                    const diffMin = Math.floor(diffMs / 60000);
+                    const diffHrs = Math.floor(diffMin / 60);
+                    const diffDay = Math.floor(diffHrs / 24);
+                    if (diffMin < 1)  return "Just now";
+                    if (diffMin < 60) return `${diffMin} min ago`;
+                    if (diffHrs < 24) return `${diffHrs} hr${diffHrs > 1 ? "s" : ""} ago`;
+                    return `${diffDay} day${diffDay > 1 ? "s" : ""} ago`;
+                };
+
+                const colorMap = { pending: "bg-neo-yellow", approved: "bg-neo-green", rejected: "bg-neo-red" };
+
+                setAlerts(
+                    (Array.isArray(data) ? data : []).slice(0, 8).map((r) => ({
+                        text: `📚 ${r.student_name || "A student"} requested "${r.title}"`,
+                        time: fmt(r.requested_at),
+                        color: colorMap[r.status] || "bg-neo-yellow",
+                        status: r.status,
+                    }))
+                );
+            } catch (e) {
+                console.error("[Dashboard] Failed to load alerts:", e);
+            }
+        };
+        fetchAlerts();
+    }, []);
+
+    return alerts;
+}
+
 const TODAY_SCHEDULE = [
     { time: "09:00 AM", title: "Data Structures — Section A", location: "Room 301" },
     { time: "11:00 AM", title: "Operating Systems — Section B", location: "Lab 204" },
@@ -65,10 +103,68 @@ const TODAY_SCHEDULE = [
     { time: "04:00 PM", title: "Project Reviews — Final Year", location: "Room 105" },
 ];
 
+// ── Librarian stats fetched from API ─────────────────────────────────────────
+function useLibrarianStats() {
+    const [stats, setStats] = useState([
+        { label: "Total Issued", value: "–", icon: BookOpen, color: "bg-neo-blue" },
+        { label: "Issued Today", value: "–", icon: ClipboardList, color: "bg-neo-green" },
+        { label: "Overdue", value: "–", icon: AlertTriangle, color: "bg-neo-red" },
+        { label: "Pending Requests", value: "–", icon: Clock, color: "bg-neo-yellow" },
+    ]);
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const [issuedRes, requestsRes] = await Promise.all([
+                    fetch("http://localhost:5000/api/library/my-books"),
+                    fetch("http://localhost:5000/api/library/requests"),
+                ]);
+
+                const issued = issuedRes.ok ? await issuedRes.json() : [];
+                const requests = requestsRes.ok ? await requestsRes.json() : [];
+
+                const now = new Date();
+                const todayStr = now.toDateString();
+
+                const totalIssued = Array.isArray(issued) ? issued.length : 0;
+                const issuedToday = Array.isArray(issued)
+                    ? issued.filter((b) => new Date(b.issue_date).toDateString() === todayStr).length
+                    : 0;
+                const overdue = Array.isArray(issued)
+                    ? issued.filter((b) => new Date(b.due_date) < now).length
+                    : 0;
+                const pendingRequests = Array.isArray(requests)
+                    ? requests.filter((r) => r.status === "pending").length
+                    : 0;
+
+                setStats([
+                    { label: "Total Issued", value: String(totalIssued), icon: BookOpen, color: "bg-neo-blue" },
+                    { label: "Issued Today", value: String(issuedToday), icon: ClipboardList, color: "bg-neo-green" },
+                    { label: "Overdue", value: String(overdue), icon: AlertTriangle, color: "bg-neo-red" },
+                    { label: "Pending Requests", value: String(pendingRequests), icon: Clock, color: "bg-neo-yellow" },
+                ]);
+            } catch (err) {
+                console.error("[Dashboard] Failed to fetch librarian stats:", err);
+            }
+        };
+
+        fetchStats();
+    }, []);
+
+    return stats;
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 export default function FacultyDashboard() {
     const { user } = useAuth();
     const role = user?.role || "faculty";
-    const stats = ROLE_STATS[role] || ROLE_STATS.faculty;
+
+    const librarianStats  = useLibrarianStats();
+    const librarianAlerts = useLibrarianAlerts();
+
+    // For librarian use live stats; for all others use static ROLE_STATS
+    const stats    = role === "librarian" ? librarianStats  : (ROLE_STATS[role] || ROLE_STATS.faculty);
+    const activity = role === "librarian" ? librarianAlerts : RECENT_ACTIVITY;
 
     return (
         <div className="font-display bg-neo-bg text-neo-black min-h-screen p-6 -m-6">
@@ -158,16 +254,20 @@ export default function FacultyDashboard() {
                         </div>
                     </div>
 
-                    {/* Recent Activity */}
+                    {/* Recent Activity / Librarian Alerts */}
                     <div className="bg-white border-3 border-black shadow-neo">
-                        <div className="px-6 py-4 border-b-3 border-black bg-neo-yellow">
+                        <div className={`px-6 py-4 border-b-3 border-black ${role === 'librarian' ? 'bg-neo-red' : 'bg-neo-yellow'}`}>
                             <h3 className="text-xl font-black text-black uppercase italic flex items-center gap-2">
                                 <Clock className="w-5 h-5" />
-                                Recent Activity
+                                {role === 'librarian' ? 'Book Request Alerts' : 'Recent Activity'}
                             </h3>
                         </div>
                         <div className="divide-y-2 divide-black">
-                            {RECENT_ACTIVITY.map((item, i) => (
+                            {activity.length === 0 ? (
+                                <div className="px-5 py-8 text-center font-bold text-slate-400 uppercase text-sm">
+                                    No recent requests.
+                                </div>
+                            ) : activity.map((item, i) => (
                                 <div
                                     key={i}
                                     className="px-5 py-4 hover:bg-neo-bg transition-colors"
@@ -176,11 +276,19 @@ export default function FacultyDashboard() {
                                         <div
                                             className={`w-3 h-3 ${item.color} border-2 border-black mt-1.5 shrink-0`}
                                         />
-                                        <div>
-                                            <p className="text-sm font-bold text-black">{item.text}</p>
-                                            <p className="text-xs font-bold text-slate-400 mt-1">
-                                                {item.time}
-                                            </p>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-bold text-black leading-snug">{item.text}</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <p className="text-xs font-bold text-slate-400">{item.time}</p>
+                                                {item.status && (
+                                                    <span className={`text-[10px] font-black uppercase px-1.5 border border-black
+                                                        ${item.status === 'pending'  ? 'bg-neo-yellow text-black' :
+                                                          item.status === 'approved' ? 'bg-neo-green text-black'  :
+                                                          'bg-neo-red text-white'}`}>
+                                                        {item.status}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

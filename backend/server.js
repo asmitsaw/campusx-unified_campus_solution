@@ -5,7 +5,7 @@ import authRoutes from "./routes/authroutes.js";
 import dashboardRoutes from "./routes/dashboardroutes.js";
 
 
-import libraryRoutes from "./routes/libraryRoutes.js";
+import libraryRoutes from "./routes/lib_routes.js";
 
 dotenv.config();
 
