@@ -52,7 +52,7 @@ CREATE TABLE attendance_records (
 INSERT INTO faculty_students (roll_no, name, email, section, branch, semester) VALUES
   ('CS22001', 'Aarav Patel',       'student@campusx.edu',   'A', 'CSE', 4),
   ('CS22002', 'Sumit Patil',      'sumitpatil141005@gmail.com', 'A', 'CSE', 4),
-  ('CS22003', 'Rahul Kumar',       'cs22003@college.edu',   'A', 'CSE', 4),
+  ('CS22003', 'Kaustubh Rane',     'kaustubh.anr@gmail.com', 'A', 'CSE', 4),
   ('CS22004', 'Sneha Reddy',       'cs22004@college.edu',   'A', 'CSE', 4),
   ('CS22005', 'Vikram Singh',      'cs22005@college.edu',   'A', 'CSE', 4),
   ('CS22006', 'Ananya Gupta',      'cs22006@college.edu',   'A', 'CSE', 4),
@@ -157,38 +157,53 @@ INSERT INTO faculty_schedule (subject, type, section, room, date, time_start, ti
   ('Data Structures',        'Lecture',  'B', 'Room 301',    '2026-02-27', '14:00', '15:00');
 
 -- ══════════════════════════════════════════════════════════════
--- SEED ATTENDANCE: Demo student (CS22001 / student@campusx.edu)
--- Randomly marks past Section A sessions as present/absent
--- Uses realistic pattern: present ~78% of the time
+-- SEED ATTENDANCE for all demo student accounts
+-- Section A sessions up to Feb 20, 2026
 -- ══════════════════════════════════════════════════════════════
--- Demo student 1: student@campusx.edu (CS22001 — Aarav Patel) — ~78% attendance
+
+-- ✅ CS22001 · student@campusx.edu (Aarav Patel) — ~78% (Borderline Safe)
 INSERT INTO attendance_records (schedule_id, student_id, status)
 SELECT
-  fs.id   AS schedule_id,
-  fst.id  AS student_id,
+  fs.id  AS schedule_id,
+  fst.id AS student_id,
   CASE
     WHEN fs.date IN ('2026-02-04','2026-02-10','2026-02-18') THEN 'absent'
     ELSE 'present'
-  END     AS status
-FROM faculty_schedule  fs
-JOIN faculty_students  fst ON fst.email = 'student@campusx.edu'
-WHERE fs.section = 'A'
-  AND fs.date < '2026-02-21'
+  END    AS status
+FROM faculty_schedule fs
+JOIN faculty_students fst ON fst.email = 'student@campusx.edu'
+WHERE fs.section = 'A' AND fs.date < '2026-02-21'
 ON CONFLICT (schedule_id, student_id) DO NOTHING;
 
--- Demo student 2: sumitpatil141005@gmail.com (CS22002 — Priya Sharma) — ~82% attendance
+-- ✅ CS22002 · sumitpatil141005@gmail.com (Priya Sharma) — ~82% (Safe)
 INSERT INTO attendance_records (schedule_id, student_id, status)
 SELECT
-  fs.id   AS schedule_id,
-  fst.id  AS student_id,
+  fs.id  AS schedule_id,
+  fst.id AS student_id,
   CASE
     WHEN fs.date IN ('2026-02-05','2026-02-13') THEN 'absent'
     ELSE 'present'
-  END     AS status
-FROM faculty_schedule  fs
-JOIN faculty_students  fst ON fst.email = 'sumitpatil141005@gmail.com'
-WHERE fs.section = 'A'
-  AND fs.date < '2026-02-21'
+  END    AS status
+FROM faculty_schedule fs
+JOIN faculty_students fst ON fst.email = 'sumitpatil141005@gmail.com'
+WHERE fs.section = 'A' AND fs.date < '2026-02-21'
+ON CONFLICT (schedule_id, student_id) DO NOTHING;
+
+-- ⚠️  CS22003 · kaustubh.anr@gmail.com (Kaustubh Rane) — ~68% (At Risk)
+INSERT INTO attendance_records (schedule_id, student_id, status)
+SELECT
+  fs.id  AS schedule_id,
+  fst.id AS student_id,
+  CASE
+    WHEN fs.date IN (
+      '2026-02-02','2026-02-05','2026-02-09',
+      '2026-02-11','2026-02-17','2026-02-19'
+    ) THEN 'absent'
+    ELSE 'present'
+  END    AS status
+FROM faculty_schedule fs
+JOIN faculty_students fst ON fst.email = 'kaustubh.anr@gmail.com'
+WHERE fs.section = 'A' AND fs.date < '2026-02-21'
 ON CONFLICT (schedule_id, student_id) DO NOTHING;
 
 -- Refresh schema cache
