@@ -151,14 +151,32 @@ export const getMyApplications = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const { data, error } = await supabase
+    // Step 1: get applications
+    const { data: apps, error: appsError } = await supabase
       .from("applications")
-      .select("*, placements(*)")
+      .select("*")
       .eq("student_id", userId)
       .order("created_at", { ascending: false });
 
-    if (error) throw error;
-    res.json({ success: true, data });
+    if (appsError) throw appsError;
+    if (!apps || apps.length === 0) return res.json({ success: true, data: [] });
+
+    // Step 2: fetch placement details for each application
+    const placementIds = [...new Set(apps.map(a => a.placement_id).filter(Boolean))];
+    const { data: placements } = await supabase
+      .from("placements")
+      .select("*")
+      .in("id", placementIds);
+
+    const placementsMap = {};
+    (placements || []).forEach(p => { placementsMap[p.id] = p; });
+
+    const enriched = apps.map(a => ({
+      ...a,
+      placements: placementsMap[a.placement_id] || null,
+    }));
+
+    res.json({ success: true, data: enriched });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -171,14 +189,32 @@ export const getDriveApplicants = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { data, error } = await supabase
+    // Step 1: get all applications for this drive
+    const { data: apps, error: appsError } = await supabase
       .from("applications")
-      .select("*, users(id, name, email, role)")
+      .select("*")
       .eq("placement_id", id)
       .order("created_at", { ascending: false });
 
-    if (error) throw error;
-    res.json({ success: true, data });
+    if (appsError) throw appsError;
+    if (!apps || apps.length === 0) return res.json({ success: true, data: [] });
+
+    // Step 2: fetch user details for each applicant
+    const studentIds = [...new Set(apps.map(a => a.student_id).filter(Boolean))];
+    const { data: users } = await supabase
+      .from("users")
+      .select("id, name, email, role")
+      .in("id", studentIds);
+
+    const usersMap = {};
+    (users || []).forEach(u => { usersMap[u.id] = u; });
+
+    const enriched = apps.map(a => ({
+      ...a,
+      users: usersMap[a.student_id] || null,
+    }));
+
+    res.json({ success: true, data: enriched });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

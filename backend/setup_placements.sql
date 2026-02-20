@@ -27,7 +27,7 @@ CREATE TABLE placements (
 
 CREATE TABLE applications (
   id            UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  student_id    UUID NOT NULL,
+  student_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   placement_id  UUID NOT NULL REFERENCES placements(id) ON DELETE CASCADE,
   status        TEXT DEFAULT 'Applied',
   created_at    TIMESTAMPTZ DEFAULT NOW(),
