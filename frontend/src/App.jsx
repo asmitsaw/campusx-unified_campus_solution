@@ -11,6 +11,7 @@ import LMS from './pages/LMS';
 import Analytics from './pages/Analytics';
 import Library from './pages/Library';
 import Events from './pages/Events';
+import Hostel from './pages/Hostel';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
           <Route path="analytics" element={<Analytics />} />
           <Route path="library" element={<Library />} />
           <Route path="events" element={<Events />} />
+          <Route path="hostel" element={<Hostel />} />
           <Route path="lms" element={<LMS />} />
         </Route>
 

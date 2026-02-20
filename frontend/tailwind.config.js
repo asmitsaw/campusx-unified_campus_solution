@@ -31,6 +31,22 @@ export default {
         "neo-cyan": "#23f0c7",
         "neo-orange": "#ff7675",
         "neo-blue": "#74b9ff", // Updated specific shade if needed, but keeping consistent
+        // Tracker/Analytics/Hostel Palette Extensions
+        "neo-cream": "#fffdf5", // neo-bg for Tracker
+        "neo-success": "#00E054",
+        "neo-danger": "#FF4D4D",
+        "neo-warning": "#FFA500",
+        "neo-accent-yellow": "#FFC900", // Hostel accent3
+        "neo-accent-orange": "#FF5C00", // Hostel accent5
+        "neo-accent-pink": "#FF90E8", // Hostel accent1
+        "neo-accent-blue": "#23A6F0", // Hostel accent2
+        "neo-accent-green": "#00E08E", // Hostel accent4
+        // Profile Palette
+        "neo-lavender": "#E0E7FF",
+        "neo-teal": "#4ECDC4",
+        "neo-strong-blue": "#5465FF",
+        "neo-strong-purple": "#9B5DE5",
+        "neo-yellow-accent": "#FFE66D",
       },
       boxShadow: {
         'neo': '5px 5px 0px 0px #000000',

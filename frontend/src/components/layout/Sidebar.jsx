@@ -1,11 +1,12 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, BookOpen, Briefcase, Calendar, Settings, LogOut, Verified, BarChart, School } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, Briefcase, Calendar, Settings, LogOut, Verified, BarChart, School, Home } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard/overview', icon: LayoutDashboard }, // Added as top link
   { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart },
   { name: 'Attendance', href: '/dashboard/attendance', icon: Calendar },
+  { name: 'Hostel', href: '/dashboard/hostel', icon: Home },
   { name: 'Library', href: '/dashboard/library', icon: BookOpen },
   { name: 'Events', href: '/dashboard/events', icon: Verified },
   { name: 'Placement', href: '/dashboard/placement', icon: Briefcase },

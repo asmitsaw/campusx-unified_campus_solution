@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, School, User, Building2, HelpCircle, FileText, Lock } from 'lucide-react';
+import { ArrowRight, School, User, Lock, Building2, HelpCircle, FileText } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-  const handleLogin = (role) => {
-    if (role === 'student') navigate('/dashboard/profile');
-    else if (role === 'faculty') navigate('/dashboard/faculty');
+  const handleLogin = (e) => {
+    e.preventDefault();
+    // For now, redirect to the main dashboard
+    navigate('/dashboard/overview');
   };
 
   return (
@@ -33,45 +36,58 @@ export default function Login() {
         {/* Main Login Card */}
         <main className="bg-white border-3 border-black shadow-neo rounded p-8 md:p-12 space-y-8 transition-all duration-200">
           <div className="space-y-2">
-            <h2 className="text-3xl font-black leading-none uppercase">Welcome Back</h2>
-            <p className="text-slate-600 font-medium">Select your role to continue to the portal.</p>
+            <h2 className="text-3xl font-black leading-none uppercase">Sign In</h2>
+            <p className="text-slate-600 font-medium">Enter your credentials to access the portal.</p>
           </div>
 
-          <div className="flex flex-col gap-6">
-            {/* Student Login Action */}
-            <button 
-              onClick={() => handleLogin('student')}
-              className="w-full py-5 px-6 flex items-center justify-between group bg-[#fbef23] border-3 border-black shadow-neo-sm rounded hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-neo-hover active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-100"
-            >
-              <div className="flex items-center gap-4">
-                <div className="p-2 border-2 border-black bg-white rounded-full">
-                  <User className="w-6 h-6 text-black" strokeWidth={3} />
-                </div>
-                <div className="text-left">
-                  <span className="block text-xl font-black text-black leading-none">STUDENT LOGIN</span>
-                  <span className="text-xs font-bold text-black/60 uppercase tracking-widest">Portal Access</span>
-                </div>
+          <form onSubmit={handleLogin} className="flex flex-col gap-6">
+            
+            {/* Email/Username Input */}
+            <div className="space-y-2">
+              <label className="text-sm font-black uppercase tracking-wide">ID / Username</label>
+              <div className="relative group">
+                 <div className="absolute top-3.5 left-3 pointer-events-none z-10">
+                    <User className="w-6 h-6 text-black" strokeWidth={2.5} />
+                 </div>
+                 <input 
+                    type="text" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-white border-3 border-black pl-12 pr-4 py-3 text-black font-bold outline-none transition-all placeholder:text-gray-400 shadow-neo-sm focus:shadow-neo-hover focus:translate-x-[-2px] focus:translate-y-[-2px]"
+                    placeholder="student@campusx.edu"
+                 />
               </div>
-              <ArrowRight className="w-8 h-8 text-black group-hover:translate-x-1 transition-transform" strokeWidth={3} />
-            </button>
+            </div>
 
-            {/* Faculty Login Action */}
-            <button 
-              onClick={() => handleLogin('faculty')}
-              className="w-full py-5 px-6 flex items-center justify-between group bg-[#137fec] text-white border-3 border-black shadow-neo-sm rounded hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-neo-hover active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-100"
-            >
-              <div className="flex items-center gap-4">
-                <div className="p-2 border-2 border-black bg-white rounded-full">
-                  <Building2 className="w-6 h-6 text-[#137fec]" strokeWidth={3} />
-                </div>
-                <div className="text-left">
-                  <span className="block text-xl font-black leading-none uppercase italic tracking-tight">FACULTY LOGIN</span>
-                  <span className="text-xs font-bold text-white/80 uppercase tracking-widest">Administrative</span>
-                </div>
+            {/* Password Input */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <label className="text-sm font-black uppercase tracking-wide">Password</label>
+                <a href="#" className="text-xs font-black uppercase underline decoration-2 hover:text-[#137fec]">Forgot?</a>
               </div>
-              <ArrowRight className="w-8 h-8 text-white group-hover:translate-x-1 transition-transform" strokeWidth={3} />
+              <div className="relative group">
+                 <div className="absolute top-3.5 left-3 pointer-events-none z-10">
+                    <Lock className="w-6 h-6 text-black" strokeWidth={2.5} />
+                 </div>
+                 <input 
+                    type="password" 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-white border-3 border-black pl-12 pr-4 py-3 text-black font-bold outline-none transition-all placeholder:text-gray-400 shadow-neo-sm focus:shadow-neo-hover focus:translate-x-[-2px] focus:translate-y-[-2px]"
+                    placeholder="••••••••"
+                 />
+              </div>
+            </div>
+
+            {/* Login Button */}
+            <button 
+              type="submit"
+              className="w-full py-4 px-6 flex items-center justify-center gap-2 group bg-[#fbef23] border-3 border-black shadow-neo-sm rounded hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-neo-hover active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-100 mt-2"
+            >
+              <span className="block text-xl font-black text-black leading-none uppercase">Login</span>
+              <ArrowRight className="w-6 h-6 text-black group-hover:translate-x-1 transition-transform" strokeWidth={3} />
             </button>
-          </div>
+          </form>
 
           {/* Divider */}
           <div className="relative flex items-center py-2">
@@ -82,10 +98,10 @@ export default function Login() {
 
           {/* Secondary Actions */}
           <div className="grid grid-cols-2 gap-4">
-            <button className="bg-white text-sm font-black py-4 px-4 border-3 border-black shadow-neo-sm rounded hover:bg-slate-50 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-neo-hover active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-100 uppercase">
-              Guest Access
+            <button className="bg-white text-sm font-black py-4 px-2 border-3 border-black shadow-neo-sm rounded hover:bg-slate-50 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-neo-hover active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-100 uppercase">
+              Parent Portal
             </button>
-            <button className="bg-white text-sm font-black py-4 px-4 border-3 border-black shadow-neo-sm rounded hover:bg-slate-50 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-neo-hover active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-100 uppercase">
+            <button className="bg-white text-sm font-black py-4 px-2 border-3 border-black shadow-neo-sm rounded hover:bg-slate-50 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-neo-hover active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all duration-100 uppercase">
               Apply Now
             </button>
           </div>
