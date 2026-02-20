@@ -7,6 +7,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/layout/Layout";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
+import LibProfile from "./pages/lib_Profile";
 import Placement from "./pages/Placement";
 import Attendance from "./pages/Attendance";
 import Analytics from "./pages/Analytics";
@@ -81,7 +82,7 @@ function App() {
             <Route path="hostel" element={<ManageHostel />} />
             <Route path="placements" element={<ManagePlacements />} />
             <Route path="admin" element={<AdminPanel />} />
-            <Route path="profile" element={<Profile />} />
+            <Route path="profile" element={<LibProfile />} />
           </Route>
 
           {/* Catch-all */}
