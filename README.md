@@ -1,4 +1,4 @@
-# VegaERP - Unified Campus Super App
+# CampusX - Unified Campus Super App
 
 A centralized, role-based web application that consolidates academic and campus services into a single intelligent dashboard for institutions like NITs, IITs, and large state universities.
 
